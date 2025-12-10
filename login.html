@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Menajes Vasaya - Login</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #32CD32, #1f8b1f);
+  height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#login-box {
+  background: white;
+  padding: 26px;
+  border-radius: 12px;
+  width: 320px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #32CD32;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+button:hover {
+  background: #289928;
+}
+
+#togglePass {
+  position: absolute;
+  right: 12px;
+  top: 38px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+}
+
+.pass-container {
+  position: relative;
+}
+</style>
+</head>
+
+<body>
+
+<div id="login-box">
+  <h2>Iniciar Sesión</h2>
+  
+  <input id="email" type="email" placeholder="Correo electrónico" required>
+
+  <div class="pass-container">
+    <input id="password" type="password" placeholder="Contraseña" required>
+    <span id="togglePass" onclick="mostrarPass()">👁</span>
+  </div>
+
+  <button onclick="login()">Entrar</button>
+
+  <p id="msg" style="text-align:center; margin-top:10px; color:red; font-weight:bold;"></p>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<script>
+// ==========================
+// 🔥 CONFIGURACIÓN FIREBASE
+// ==========================
+const firebaseConfig = {
+  apiKey: "AIzaSyAKZw5ucoD1NIAHr856gKeorkYxHV2B7Ik",
+  authDomain: "menajes-vasaya-e7cb2.firebaseapp.com",
+  projectId: "menajes-vasaya-e7cb2",
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+// Si ya está logeado → ir a index.html
+auth.onAuthStateChanged(user => {
+  if (user) {
+    window.location.href = "index.html";
+  }
+});
+
+// ==========================
+// 🔐 LOGIN
+// ==========================
+function login() {
+  const email = document.getElementById("email").value.trim();
+  const pass = document.getElementById("password").value.trim();
+  const msg = document.getElementById("msg");
+
+  if (!email || !pass) {
+    msg.textContent = "Debe ingresar correo y contraseña";
+    return;
+  }
+
+  msg.textContent = "Ingresando...";
+
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => {
+      msg.style.color = "green";
+      msg.textContent = "Acceso concedido. Redirigiendo...";
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 800);
+    })
+    .catch(err => {
+      msg.textContent = "Error: " + traducirError(err.code);
+      msg.style.color = "red";
+    });
+}
+
+// ==========================
+// 👁 MOSTRAR / OCULTAR PASS
+// ==========================
+function mostrarPass() {
+  const pass = document.getElementById("password");
+  pass.type = pass.type === "password" ? "text" : "password";
+}
+
+// ==========================
+// 🛠 MENSAJES AMIGABLES
+// ==========================
+function traducirError(code) {
+  const errores = {
+    "auth/invalid-email": "Correo inválido",
+    "auth/user-not-found": "Usuario no existe",
+    "auth/wrong-password": "Contraseña incorrecta",
+    "auth/too-many-requests": "Demasios intentos. Intente más tarde."
+  };
+  return errores[code] || "Error desconocido";
+}
+</script>
+
+</body>
+</html>

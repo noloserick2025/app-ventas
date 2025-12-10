@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario</title>
+
+<!-- Firebase 8 (única versión, igual que index.html) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+<!-- Tu configuración -->
+<script src="firebase-config.js"></script>
+
+<style>
+body { font-family: Arial; padding:20px; background:#f4f4f4; }
+nav { background:#333; color:white; padding:10px; margin-bottom:12px; }
+nav a { color:white; margin-right:15px; text-decoration:none; font-weight:bold; }
+.formulario { background:#32CD32; padding:12px; border-radius:8px; margin-bottom:14px; max-width:720px; display:flex; flex-direction:column; gap:8px;}
+.form-row { display:flex; gap:8px; align-items:center; }
+label { width:110px; font-weight:600; }
+input[type=text], input[type=number] { padding:8px; border-radius:6px; border:1px solid #bbb; flex:1; }
+input[type=text] { text-transform:uppercase; }
+input[readonly] { background:#eee; }
+button { padding:10px 14px; border:none; border-radius:6px; cursor:pointer; font-weight:700; transition:0.2s; }
+button:hover { opacity:0.9; }
+.accion { padding:6px 8px; border:none; border-radius:6px; cursor:pointer; color:white; }
+.editar { background:#007bff; }
+.eliminar { background:#dc3545; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+table th, table td { border:1px solid #ccc; padding:8px; text-align:center; }
+table th { background:#32CD32; color:white; }
+#buscar-inventario { padding:8px; width:100%; margin:10px 0; border-radius:6px; border:1px solid #bbb; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">🏠 Ventas</a>
+  <a href="inventario.html">📦 Inventario</a>
+  <a href="control.html">📋 Control</a>
+  <a href="envios.html">📋 Envíos</a>
+</nav>
+
+<h2>Inventario de Productos</h2>
+
+<div class="formulario">
+  <div class="form-row">
+    <label for="inv-codigo">Código:</label>
+    <input id="inv-codigo" type="text" placeholder="Código" oninput="autocompletarProducto()" onkeydown="moverFoco(event,'inv-nombre')">
+  </div>
+
+  <div class="form-row">
+    <label for="inv-nombre">Nombre:</label>
+    <input id="inv-nombre" type="text" placeholder="Nombre" onkeydown="moverFoco(event,'inv-cantidad')">
+  </div>
+
+  <div class="form-row">
+    <label for="inv-cantidad">Cantidad:</label>
+    <input id="inv-cantidad" type="number" min="1" placeholder="Cantidad" onkeydown="moverFoco(event,'btnGuardarInventario')">
+  </div>
+
+  <div class="form-row">
+    <label for="inv-stock">Stock actual:</label>
+    <input id="inv-stock" type="number" readonly>
+  </div>
+
+  <div style="display:flex; justify-content:flex-end;">
+    <button id="btnGuardarInventario" onclick="guardarProductoInventario()">Guardar Producto</button>
+  </div>
+</div>
+
+<input id="buscar-inventario" placeholder="Buscar producto..." onkeyup="buscarInventario()">
+
+<table id="tabla-inventario">
+  <thead>
+    <tr><th>Código</th><th>Nombre</th><th>Stock</th><th>Acciones</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+/* ================================
+   AUTENTICACIÓN
+================================ */
+firebase.auth().onAuthStateChanged(user => {
+  if (!user) {
+    window.location.href = "login.html";
+  }
+});
+
+/* ================================
+   CONEXIÓN ÚNICA A FIREBASE
+================================ */
+const db = firebase.database();
+
+/* ================================
+   VARIABLES
+================================ */
+let inventario = [];
+
+/* ================================
+   LOCALSTORAGE
+================================ */
+function guardarLocal(){ localStorage.setItem("inventario", JSON.stringify(inventario)); }
+function cargarLocal(){ inventario = JSON.parse(localStorage.getItem("inventario")||"[]"); }
+
+/* ================================
+   RENDERIZAR TABLA
+================================ */
+function renderInventario(){
+  const tbody=document.querySelector("#tabla-inventario tbody");
+  tbody.innerHTML="";
+  inventario.forEach((p,i)=>{
+    const fila=document.createElement("tr");
+    fila.innerHTML=`
+      <td>${p.codigo}</td>
+      <td>${p.nombre}</td>
+      <td>${p.cantidad}</td>
+      <td>
+        <button class="accion editar" onclick="editarInventario(${i})">Editar</button>
+        <button class="accion eliminar" onclick="eliminarInventario(${i})">Eliminar</button>
+      </td>`;
+    tbody.appendChild(fila);
+  });
+}
+
+/* ================================
+   LISTENER EN TIEMPO REAL
+================================ */
+db.ref("inventario").on("value", snapshot => {
+  const data = snapshot.val() || {};
+
+  inventario = Object.keys(data)
+    .map(k => data[k])
+    .sort((a, b) => {
+      const codA = a.codigo.trim();
+      const codB = b.codigo.trim();
+
+      // Si AMBOS códigos son números → ordenar como números reales
+      if (!isNaN(codA) && !isNaN(codB)) {
+        return Number(codA) - Number(codB);
+      }
+
+      // Si son alfanuméricos → ordenar como texto natural (A1, A2, A10)
+      return codA.localeCompare(codB, 'es', { numeric: true });
+    });
+
+  guardarLocal();
+  renderInventario();
+});
+
+
+/* ================================
+   FUNCIONES
+================================ */
+function moverFoco(event,siguienteId){
+  if(event.key==="Enter"){
+    event.preventDefault();
+    if(siguienteId==="btnGuardarInventario"){ guardarProductoInventario(); }
+    else{
+      const el=document.getElementById(siguienteId);
+      if(el) el.focus();
+    }
+  }
+}
+
+function autocompletarProducto() {
+  const codigoInput = document.getElementById("inv-codigo").value.trim();
+  const nombreInput = document.getElementById("inv-nombre");
+  const stockInput  = document.getElementById("inv-stock");
+
+  if (!codigoInput) {
+    nombreInput.readOnly = false;
+    nombreInput.value = "";
+    stockInput.value = 0;
+    return;
+  }
+
+  const producto = inventario.find(p => String(p.codigo) === codigoInput);
+
+  if (producto) {
+    nombreInput.value = producto.nombre;
+    nombreInput.readOnly = true;
+    stockInput.value = producto.cantidad;
+  } else {
+    nombreInput.readOnly = false;
+    nombreInput.value = "";
+    stockInput.value = 0;
+  }
+}
+
+function guardarProductoInventario(){
+  const codigo=document.getElementById("inv-codigo").value.trim().toUpperCase();
+  const nombre=document.getElementById("inv-nombre").value.trim().toUpperCase();
+  const cantidad=parseInt(document.getElementById("inv-cantidad").value||0);
+
+  if(!codigo||!nombre){
+    alert("Código y Nombre son obligatorios.");
+    return;
+  }
+
+  const existente=inventario.find(p=>p.codigo===codigo);
+
+  if(cantidad<=0 && !existente){
+    alert("Cantidad inicial debe ser > 0");
+    return;
+  }
+
+  const nuevoStock = existente ? (existente.cantidad+cantidad) : cantidad;
+
+  const producto={codigo,nombre,cantidad:nuevoStock};
+
+  db.ref("inventario/"+codigo).set(producto)
+    .then(()=>alert(`Producto ${nombre} guardado.`));
+
+  document.getElementById("inv-codigo").value="";
+  document.getElementById("inv-nombre").value="";
+  document.getElementById("inv-nombre").readOnly=false;
+  document.getElementById("inv-cantidad").value="";
+  document.getElementById("inv-stock").value="";
+  document.getElementById("inv-codigo").focus();
+}
+
+function editarInventario(i){
+  const p=inventario[i];
+  const nuevoNombre=prompt("Nuevo nombre:",p.nombre);
+  const nuevaCantidadStr=prompt("Nuevo stock:",p.cantidad);
+
+  let actualizar=false;
+
+  if(nuevoNombre && nuevoNombre.trim().toUpperCase()!==p.nombre){
+    p.nombre=nuevoNombre.trim().toUpperCase();
+    actualizar=true;
+  }
+
+  if(nuevaCantidadStr && !isNaN(parseInt(nuevaCantidadStr))){
+    p.cantidad=parseInt(nuevaCantidadStr);
+    actualizar=true;
+  }
+
+  if(actualizar){
+    db.ref("inventario/"+p.codigo).update(p)
+      .then(()=>alert(`Producto ${p.codigo} actualizado.`));
+  } else {
+    alert("No hay cambios.");
+  }
+}
+
+function eliminarInventario(i){
+  const p=inventario[i];
+  if(confirm(`Eliminar producto ${p.nombre} (${p.codigo})?`)){
+    db.ref("inventario/"+p.codigo).remove()
+      .then(()=>alert(`Producto ${p.nombre} eliminado.`));
+  }
+}
+
+function buscarInventario(){
+  const filtro=document.getElementById("buscar-inventario").value.toLowerCase();
+  document.querySelectorAll("#tabla-inventario tbody tr").forEach(f=>{
+    f.style.display=f.textContent.toLowerCase().includes(filtro)?"":"none";
+  });
+}
+
+/* ================================
+   INICIO
+================================ */
+window.onload = ()=>{
+  cargarLocal();
+  renderInventario();
+  document.getElementById("inv-codigo").focus();
+};
+</script>
+
+</body>
+</html>

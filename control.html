@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Control de Ventas</title>
+
+<!-- Firebase v8 -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+<!-- Configuración Firebase (tu archivo) -->
+<script src="firebase-config.js"></script>
+
+<script>
+  window.db = firebase.database();
+
+  firebase.auth().onAuthStateChanged(user => {
+      if (!user) window.location.href = "login.html";
+  });
+
+  function logout() {
+      firebase.auth().signOut().then(() => {
+          window.location.href = "login.html";
+      });
+  }
+</script>
+
+<style>
+/* CSS se envía en la PARTE 2 */
+/* ================================
+   TEMA PRINCIPAL NEGRO + DORADO
+================================ */
+:root {
+    --fondo: #0d0d0d;
+    --panel: #1a1a1a;
+    --panel-claro: #222;
+    --dorado: #e0b45a;
+    --blanco: #f5f5f5;
+    --gris: #b3b3b3;
+    --verde: #4caf50;
+    --rojo: #d9534f;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--fondo);
+    font-family: "Segoe UI", sans-serif;
+    color: var(--blanco);
+}
+
+/* ================================
+   NAVBAR
+================================ */
+.navbar {
+    width: 100%;
+    padding: 15px 25px;
+    background-color: var(--panel);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--dorado);
+}
+
+.nav-title {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: var(--dorado);
+}
+
+.nav-right a {
+    color: var(--blanco);
+    margin-right: 20px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.nav-right a:hover {
+    color: var(--dorado);
+}
+
+.logout-btn {
+    background-color: var(--dorado);
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.logout-btn:hover {
+    filter: brightness(1.15);
+}
+
+/* ================================
+   FILTROS
+================================ */
+.filtros {
+    margin: 25px;
+    padding: 15px;
+    background-color: var(--panel);
+    border-radius: 10px;
+    border-left: 4px solid var(--dorado);
+}
+
+.select {
+    padding: 8px 10px;
+    margin-left: 10px;
+    background-color: var(--panel-claro);
+    color: var(--blanco);
+    border: 1px solid var(--gris);
+    border-radius: 6px;
+}
+
+/* ================================
+   RESUMEN GLOBAL
+================================ */
+#resumen-global {
+    margin: 25px;
+    padding: 20px;
+    background-color: var(--panel);
+    border-radius: 10px;
+    border-left: 4px solid var(--dorado);
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+/* ================================
+   TARJETAS DE CLIENTE
+================================ */
+.tarjeta {
+    margin: 25px;
+    background-color: var(--panel);
+    border-radius: 12px;
+    padding: 18px 25px;
+    border-left: 4px solid var(--dorado);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+}
+
+.tarjeta h2 {
+    margin: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--gris);
+    color: var(--dorado);
+}
+
+/* ================================
+   LINEAS POR FECHA
+================================ */
+.linea-venta {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 10px;
+    border-bottom: 1px solid #333;
+    align-items: center;
+}
+
+.linea-venta:last-child {
+    border-bottom: none;
+}
+
+.linea-venta.pagado {
+    background-color: rgba(76, 175, 80, 0.35);
+    border-left: 4px solid #4caf50;
+}
+
+.linea-venta span {
+    flex: 1;
+    font-size: 0.95em;
+}
+
+/* COLORES DE VALORES */
+.valor-total {
+    color: var(--blanco);
+    font-weight: bold;
+}
+
+.valor-pagado {
+    color: var(--verde);
+    font-weight: bold;
+}
+
+.valor-deuda {
+    color: var(--rojo);
+    font-weight: bold;
+}
+
+/* ================================
+   BOTONES ICONO
+================================ */
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: transform 0.2s;
+}
+
+.btn-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: var(--dorado);
+}
+
+.btn-icon:hover {
+    transform: scale(1.2);
+}
+
+/* ================================
+   RESUMEN CLIENTE
+================================ */
+.resumen-cliente {
+    margin-top: 12px;
+    padding: 12px;
+    background-color: var(--panel-claro);
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+}
+
+/* ================================
+   MODAL ABONO
+================================ */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 900;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: var(--panel);
+    padding: 25px;
+    border-radius: 10px;
+    width: 300px;
+    border: 2px solid var(--dorado);
+}
+
+.modal-content h2 {
+    text-align: center;
+    color: var(--dorado);
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 12px;
+    background-color: var(--panel-claro);
+    border: 1px solid var(--gris);
+    border-radius: 6px;
+    color: var(--blanco);
+}
+
+.btn-accion {
+    width: 100%;
+    padding: 10px;
+    margin-top: 14px;
+    background-color: var(--dorado);
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-accion:hover {
+    filter: brightness(1.15);
+}
+
+.btn-cancelar {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background-color: var(--panel-claro);
+    border: 1px solid var(--gris);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-cancelar:hover {
+    background-color: #333;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="nav-left">
+        <span class="nav-title">📊 Control de Ventas</span>
+    </div>
+    <div class="nav-right">
+        <a href="index.html">Ventas</a>
+        <a href="inventario.html">Inventario</a>
+        <a href="envios.html">Envíos</a>
+        <button class="logout-btn" onclick="logout()">Salir</button>
+    </div>
+</nav>
+
+<!-- FILTROS SUPERIORES -->
+<div class="filtros">
+    <label>Mes:</label>
+    <select id="selector-mes" class="select">
+        <option value="todos">Todos</option>
+        <option value="0">Enero</option>
+        <option value="1">Febrero</option>
+        <option value="2">Marzo</option>
+        <option value="3">Abril</option>
+        <option value="4">Mayo</option>
+        <option value="5">Junio</option>
+        <option value="6">Julio</option>
+        <option value="7">Agosto</option>
+        <option value="8">Septiembre</option>
+        <option value="9">Octubre</option>
+        <option value="10">Noviembre</option>
+        <option value="11">Diciembre</option>
+    </select>
+
+    <label>Año:</label>
+    <select id="selector-ano" class="select"></select>
+</div>
+
+<!-- RESUMEN GLOBAL -->
+<div id="resumen-global"></div>
+
+<!-- TARJETAS -->
+<div id="reporte"></div>
+
+<!-- MODAL DE ABONO -->
+<div id="modalAbono" class="modal">
+  <div class="modal-content">
+      <h2>Registrar Abono</h2>
+      <input type="number" id="monto-abono" placeholder="Monto del abono">
+      <button id="guardarAbono" class="btn-accion">Guardar</button>
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+  </div>
+</div>
+
+<script>
+// ======================================================
+// VARIABLES GLOBALES
+// ======================================================
+let ventas = [];
+let pagos = {};
+let abonos = {};
+let listeners = { ventas: false, pagos: false, abonos: false };
+
+let clienteSeleccionado = null;
+let fechaSeleccionada = null;
+let deudaActual = 0;
+
+// ======================================================
+// UTILIDADES
+// ======================================================
+function formatMoney(n) {
+    return "$" + Number(n).toLocaleString("es-CL");
+}
+
+function keyPago(cliente, fecha) {
+    return `${cliente}_${fecha}`;
+}
+
+// ======================================================
+// MODAL ABONO
+// ======================================================
+function cerrarModal() {
+    document.getElementById("modalAbono").style.display = "none";
+    deudaActual = 0;
+}
+
+async function guardarAbono() {
+    const input = document.getElementById("monto-abono");
+    let monto = Number(input.value);
+
+    if (monto <= 0) {
+        alert("Monto inválido");
+        return;
+    }
+
+    if (monto > deudaActual) {
+        alert("El abono excede la deuda");
+        return;
+    }
+
+    const clave = keyPago(clienteSeleccionado, fechaSeleccionada);
+
+    try {
+        await db.ref("abonos").child(clave).push({
+            monto,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        const nuevaDeuda = deudaActual - monto;
+        if (nuevaDeuda <= 0) {
+            await db.ref("pagos").child(clave).set(true);
+        }
+
+    } catch (e) {
+        console.error(e);
+    }
+
+    cerrarModal();
+}
+
+// ======================================================
+// FIREBASE LISTENERS
+// ======================================================
+function verificarCarga() {
+    if (listeners.ventas && listeners.pagos && listeners.abonos) {
+        refrescarTodo();
+    }
+}
+
+function cargarDatos() {
+    db.ref("ventas").on("value", snap => {
+        const data = snap.val() || {};
+        ventas = Object.keys(data).map(id => ({ ...data[id], firebaseId: id }));
+        listeners.ventas = true;
+        verificarCarga();
+    });
+
+    db.ref("pagos").on("value", snap => {
+        pagos = snap.val() || {};
+        listeners.pagos = true;
+        verificarCarga();
+    });
+
+    db.ref("abonos").on("value", snap => {
+        abonos = snap.val() || {};
+        listeners.abonos = true;
+        verificarCarga();
+    });
+}
+
+// ======================================================
+// ACCIONES
+// ======================================================
+async function marcarPago(clave) {
+    await db.ref("pagos").child(clave).set(true);
+}
+
+async function revertirPago(clave) {
+    await db.ref("pagos").child(clave).remove();
+}
+
+function abrirModalAbono(cliente, fecha, deuda) {
+    clienteSeleccionado = cliente;
+    fechaSeleccionada = fecha;
+    deudaActual = deuda;
+    document.getElementById("monto-abono").value = "";
+    document.getElementById("modalAbono").style.display = "flex";
+}
+
+async function revertirAbono(clave) {
+    await db.ref("abonos").child(clave).remove();
+}
+
+async function eliminarGrupo(cliente, fecha) {
+
+    const clave = keyPago(cliente, fecha);
+
+    const confirmar = confirm(
+        `⚠️ ¿Seguro que deseas eliminar TODAS las ventas del día ${fecha} para el cliente:\n\n${cliente}?\n\nEsta acción no se puede deshacer.`
+    );
+
+    if (!confirmar) return; // CANCELADO
+
+    const grupo = ventas.filter(v => keyPago(v.cliente, v.fecha) === clave);
+
+    for (let v of grupo) {
+        await db.ref("ventas").child(v.firebaseId).remove();
+    }
+
+    alert("La línea fue eliminada correctamente.");
+}
+
+
+// ======================================================
+// REFRESCAR UI
+// ======================================================
+function refrescarTodo() {
+    const cont = document.getElementById("reporte");
+    const resumenGlobal = document.getElementById("resumen-global");
+
+    cont.innerHTML = "";
+    resumenGlobal.innerHTML = "";
+
+    if (ventas.length === 0) {
+        cont.innerHTML = "<p>No hay ventas registradas.</p>";
+        return;
+    }
+
+    const mesSel = document.getElementById("selector-mes").value;
+    const anoSel = Number(document.getElementById("selector-ano").value);
+
+    // FILTRAR POR MES/AÑO
+    const ventasFiltradas = ventas.filter(v => {
+        const partes = v.fecha.split("-");  // ["2025","12","01"]
+     const f = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+
+        if (mesSel !== "todos" && f.getMonth() != Number(mesSel)) return false;
+        return f.getFullYear() === anoSel;
+    });
+
+    if (ventasFiltradas.length === 0) {
+        cont.innerHTML = "<p>No hay ventas en este período.</p>";
+        return;
+    }
+
+    // AGRUPAR POR CLIENTE
+    const clientes = {};
+    ventasFiltradas.forEach(v => {
+        if (!clientes[v.cliente]) clientes[v.cliente] = [];
+        clientes[v.cliente].push(v);
+    });
+
+    // ===========================
+    // RESUMEN GLOBAL (CORREGIDO)
+    // ===========================
+    let globalTotal = 0;
+    let globalPagado = 0;
+    let globalDeuda = 0;
+
+    Object.keys(clientes).forEach(cliente => {
+    const grupo = clientes[cliente];
+
+    // Fechas únicas
+    const fechas = [...new Set(grupo.map(v => v.fecha))];
+
+    fechas.forEach(fecha => {
+
+        const clave = keyPago(cliente, fecha);
+
+        // Total del día
+        const totalDia = grupo
+            .filter(v => v.fecha === fecha)
+            .reduce((s, v) => s + Number(v.valor), 0);
+
+        // Abonos aplicados
+        const totalAbonos = abonos[clave]
+            ? Object.values(abonos[clave]).reduce((s, a) => s + Number(a.monto), 0)
+            : 0;
+
+        // Si está pagado → lo pagado es igual al total
+        const pagadoDia = pagos[clave] ? totalDia : totalAbonos;
+
+        // Deuda real
+        const deuda = totalDia - pagadoDia;
+
+        globalTotal += totalDia;
+        globalPagado += pagadoDia;
+        globalDeuda += deuda;
+        });
+        });
+
+
+        resumenGlobal.innerHTML = `
+        <div><strong>TOTAL MES:</strong> ${formatMoney(globalTotal)}</div>
+        <div><strong>PAGADO:</strong> <span style="color:#4caf50">${formatMoney(globalPagado)}</span></div>
+        <div><strong>ADEUDADO:</strong> <span style="color:#d9534f">${formatMoney(globalDeuda)}</span></div>
+       `;
+
+       // ===========================
+       // TARJETAS POR CLIENTe
+       // ===========================
+       const clientesOrdenados = Object.keys(clientes).sort();
+
+       clientesOrdenados.forEach(cliente => {
+        const tarjeta = document.createElement("div");
+        tarjeta.className = "tarjeta";
+        tarjeta.innerHTML = `<h2>${cliente}</h2>`;
+
+        const ventasCliente = clientes[cliente];
+        const fechas = [...new Set(ventasCliente.map(v => v.fecha))].sort();
+
+       let totalCliente = 0;
+       let pagadoCliente = 0;
+       let deudaCliente = 0;
+
+       fechas.forEach(fecha => {
+
+       const clave = keyPago(cliente, fecha);
+
+       const totalDia = ventasCliente
+        .filter(v => v.fecha === fecha)
+        .reduce((s, v) => s + Number(v.valor), 0);
+
+        const totalAbonos = abonos[clave]
+        ? Object.values(abonos[clave]).reduce((s, a) => s + Number(a.monto), 0)
+        : 0;
+
+       // igual que en el global:
+       const pagadoDia = pagos[clave] ? totalDia : totalAbonos;
+        const deudaDia = totalDia - pagadoDia;
+  
+       totalCliente += totalDia;
+       pagadoCliente += pagadoDia;
+       deudaCliente += deudaDia;
+
+       const linea = document.createElement("div");
+       linea.className = "linea-venta";
+       if (pagos[clave]) linea.classList.add("pagado");
+
+      linea.innerHTML = `
+       <span>${fecha}</span>
+        <span class="valor-total">${formatMoney(totalDia)}</span>
+        <span class="valor-pagado">${formatMoney(pagadoDia)}</span>
+        <span class="valor-deuda">${formatMoney(deudaDia)}</span>
+
+        <button class="btn-icon" title="Pagar" onclick="marcarPago('${clave}')">✔️</button>
+        <button class="btn-icon" title="Revertir pago" onclick="revertirPago('${clave}')">↩️</button>
+        <button class="btn-icon" title="Abonar" onclick="abrirModalAbono('${cliente}','${fecha}',${deudaDia})">💰</button>
+        <button class="btn-icon" title="Revertir abonos" onclick="revertirAbono('${clave}')">⛔</button>
+        <button class="btn-icon" title="Eliminar fecha" onclick="eliminarGrupo('${cliente}','${fecha}')">🗑️</button>
+        `;
+
+        tarjeta.appendChild(linea);
+        });
+
+
+        // RESUMEN CLIENTE
+       const resumen = document.createElement("div");
+       resumen.className = "resumen-cliente";
+      resumen.innerHTML = `
+    <span><strong>Total:</strong> ${formatMoney(totalCliente)}</span>
+    <span style="color:#1a7f1a"><strong>Pagado:</strong> ${formatMoney(pagadoCliente)}</span>
+    <span style="color:#b30000"><strong>Adeudado:</strong> ${formatMoney(deudaCliente)}</span>
+`  ;
+   tarjeta.appendChild(resumen);
+
+// ===============================
+// OCULTAR TARJETAS 100% PAGADAS
+// SOLO CUANDO EL MES ES ESPECÍFICO
+// ===============================
+const mesSeleccionado = document.getElementById("selector-mes").value;
+
+if (mesSeleccionado !== "todos") {
+    // si TODO está pagado = tarjeta NO se muestra
+    if (deudaCliente <= 0) {
+        return; // no agregar tarjeta
+    }
+}
+
+// si llega hasta aquí la tarjeta sí se muestra
+cont.appendChild(tarjeta);
+
+    });
+}
+
+// ======================================================
+// INICIALIZACIÓN
+// ======================================================
+window.onload = function() {
+    // AÑOS
+    const selAno = document.getElementById("selector-ano");
+    const año = new Date().getFullYear();
+    for (let i = año - 5; i <= año + 1; i++) {
+        const o = document.createElement("option");
+        o.value = i;
+        o.textContent = i;
+        if (i === año) o.selected = true;
+        selAno.appendChild(o);
+    }
+
+    cargarDatos();
+
+    document.getElementById("selector-mes").addEventListener("change", refrescarTodo);
+    document.getElementById("selector-ano").addEventListener("change", refrescarTodo);
+
+    document.getElementById("guardarAbono").addEventListener("click", guardarAbono);
+
+    window.onclick = function(e) {
+        if (e.target === document.getElementById("modalAbono")) cerrarModal();
+    };
+};
+</script>
+
+
+</body>
+</html>
