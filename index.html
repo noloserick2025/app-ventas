@@ -693,61 +693,66 @@ function sincronizarVentasFirebase() {
 
 
 
-async function registrarVenta() { 
-    const clienteInput = document.getElementById('venta-cliente');
-    const cliente = clienteInput.value.trim();
+async function registrarVenta() {
+
+    // -----------------------------
+    // 1. VALIDAR CLIENTE
+    // -----------------------------
+    const cliente = document.getElementById('venta-cliente').value.trim();
     if (!window.clientes.includes(cliente)) {
         alert("Solo se pueden registrar ventas a clientes guardados.");
         return;
     }
 
-    // 1. Obtener el código correlativo único
-    const correlativoTransaccion = obtenerCodigoCorrelativo();
-
-    // 2. ID de inventario
+    // -----------------------------
+    // 2. DATOS PRINCIPALES
+    // -----------------------------
     const codigoInventario = document.getElementById('venta-id').value.trim();
-
-    const productoInput = document.getElementById('venta-producto');
-    const producto = productoInput.value.trim();
-    const valorIngresado = parseFloat(document.getElementById('venta-valor').value);
+    const producto = document.getElementById('venta-producto').value.trim();
+    const valorUnitario = parseFloat(document.getElementById('venta-valor').value);
     const cantidad = parseInt(document.getElementById('venta-cantidad').value) || 1;
 
-    const fechaManual = document.getElementById("fechaManual").value;
-    const fecha = fechaManual ? fechaManual : new Date().toLocaleDateString('sv-SE');
-    const ahora = new Date();
-    const hora = ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-
-    if (isNaN(valorIngresado) || valorIngresado <= 0 || !producto) {
-        alert("Ingrese un valor y producto válidos.");
+    if (!producto || isNaN(valorUnitario) || valorUnitario <= 0) {
+        alert("Ingrese un producto y valor válido.");
         return;
     }
 
-    // 🔥 VALOR UNITARIO REAL
-    const valorUnitario = valorIngresado;
+    // Fecha manual u hoy (YYYY-MM-DD)
+    const fechaManual = document.getElementById("fechaManual").value;
+    const fecha = fechaManual ? fechaManual : new Date().toLocaleDateString('sv-SE');
 
-    // -------------------------
-    //   3. AJUSTAR INVENTARIO
-    // -------------------------
+    // Hora
+    const hora = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+
+    // -----------------------------
+    // 3. CORRELATIVO REAL
+    // -----------------------------
+    const correlativo = obtenerCodigoCorrelativo();
+
+    // -----------------------------
+    // 4. CONTROL DE INVENTARIO
+    // -----------------------------
     if (codigoInventario) {
         const idInv = codigoInventario.toUpperCase();
         const prodLocal = window.inventario.find(p => String(p.codigo).toUpperCase() === idInv);
 
         if (!prodLocal) {
-            alert(`Producto con ID/Código ${idInv} no se encuentra en inventario.`);
+            alert(`Producto con código ${idInv} no existe en inventario.`);
             return;
         }
 
-        if ((prodLocal.cantidad || 0) < cantidad) {
-            alert(`STOCK INSUFICIENTE: Solo quedan ${prodLocal.cantidad || 0} unidades.`);
+        if (prodLocal.cantidad < cantidad) {
+            alert(`Stock insuficiente. Solo quedan ${prodLocal.cantidad}.`);
             return;
         }
 
-        // Descuento en Firebase
-        if (window.db && navigator.onLine) {
-            try {
-                const ref = window.db.ref('inventario').child(prodLocal.firebaseId || idInv).child('cantidad');
-                const result = await ref.transaction(current => {
-                    const actual = parseInt(current || 0);
+        // Descuento en Firebase si hay conexión
+        try {
+            if (window.db && navigator.onLine) {
+                const refCant = window.db.ref('inventario').child(prodLocal.firebaseId).child('cantidad');
+
+                const result = await refCant.transaction(actual => {
+                    actual = parseInt(actual || 0);
                     const nuevo = actual - cantidad;
                     if (nuevo < 0) return; 
                     return nuevo;
@@ -756,79 +761,82 @@ async function registrarVenta() {
                 if (result.committed) {
                     prodLocal.cantidad = result.snapshot.val();
                 }
-
-            } catch(err) {
-                console.warn("Error ajustando inventario:", err);
+            } else {
+                prodLocal.cantidad -= cantidad;
             }
-        } else {
-            prodLocal.cantidad = Math.max(0, (prodLocal.cantidad || 0) - cantidad);
+        } catch (err) {
+            console.warn("Error en inventario:", err);
         }
 
+        // Guardar inventario local
         localStorage.setItem("inventario", JSON.stringify(window.inventario));
         if (typeof renderInventarioUI === "function") renderInventarioUI();
     }
 
-    // ---------------------------------
-    //   🔥🔥 4. REGISTRAR UNA SOLA VENTA 🔥🔥
-    // ---------------------------------
-    let nuevaVenta = {
+    // -----------------------------
+    // 5. CREAR OBJETO VENTA
+    // -----------------------------
+    let venta = {
         uuid: self.crypto.randomUUID(),
-        correlativo: correlativoTransaccion,
+        correlativo: correlativo,
         cliente: cliente,
         codigo: codigoInventario,
         producto: producto,
         cantidad: cantidad,
-        valor: valorUnitario,
+        valor: valorUnitario, // se mantiene unitario
         fecha: fecha,
         hora: hora,
         embalado: false,
         firebaseId: null,
-        pendienteSincronizar: !!window.db
+        pendienteSincronizar: false
     };
 
-    // Subida a Firebase
+    // -----------------------------
+    // 6. SUBIR A FIREBASE
+    // -----------------------------
     if (window.db && navigator.onLine) {
         try {
-            const ventaFB = { ...nuevaVenta };
+            const ventaFB = { ...venta };
             delete ventaFB.uuid;
-            delete ventaFB.pendienteSincronizar;
 
-            const newRef = await window.db.ref('ventas').push(ventaFB);
-            nuevaVenta.firebaseId = newRef.key;
-            nuevaVenta.pendienteSincronizar = false;
+            const ref = await window.db.ref('ventas').push(ventaFB);
 
-        } catch(error) {
-            console.warn("Error subiendo venta:", error);
-            nuevaVenta.pendienteSincronizar = true;
-            window.ventasPendientes.push(nuevaVenta);
+            venta.firebaseId = ref.key;
+            venta.pendienteSincronizar = false;
+
+        } catch (error) {
+            console.warn("Error subiendo a Firebase:", error);
+            venta.pendienteSincronizar = true;
+            window.ventasPendientes.push(venta);
         }
     } else {
-        nuevaVenta.pendienteSincronizar = true;
-        window.ventasPendientes.push(nuevaVenta);
+        venta.pendienteSincronizar = true;
+        window.ventasPendientes.push(venta);
     }
 
-    // Guardar local
-    // Si Firebase está online, NO agregamos localmente.
-// Firebase se encargará de disparar el onChildAdded.
-if (!window.db || !navigator.onLine) {
-    // Si Firebase está ONLINE, NO agregamos localmente.
-// Firebase disparará onChildAdded y la cargará correctamente.
-if (!window.db || !navigator.onLine) {
-    window.ventas.push(nuevaVenta);
-}
-
-}
+    // -----------------------------
+    // 7. GUARDAR LOCAL (SIN DUPLICAR)
+    // -----------------------------
+    // ❗ Solo agregamos localmente si Firebase NO va a disparar onChildAdded
+    if (!window.db || !navigator.onLine) {
+        window.ventas.push(venta);
+    }
 
     guardarDatosLocal();
 
-    // Actualizar UI
+    // -----------------------------
+    // 8. ACTUALIZAR UI
+    // -----------------------------
     mostrarVentas();
 
-    // Etiqueta solo una vez
+    // -----------------------------
+    // 9. IMPRIMIR ETIQUETA
+    // -----------------------------
     if (typeof imprimirEtiquetaVenta === "function") {
-        imprimirEtiquetaVenta(cliente, correlativoTransaccion, fecha);
+        imprimirEtiquetaVenta(cliente, correlativo, fecha);
     }
 }
+
 
 
 function mostrarVentas() {
