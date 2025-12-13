@@ -7,9 +7,6 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<!-- Firebase Auth (obligatorio para login y logout) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-
 <script src="firebase-config.js"></script>
 
 
@@ -151,13 +148,6 @@
   color: black;
   background: #f9d342; /* amarillo por defecto */
 }
-#contenedorOcultas,
-#btnVerOcultas,
-#total-hoy,
-.reporte {
-    width: 100% !important;
-    box-sizing: border-box;
-}
 
   </style>
 </head>
@@ -178,55 +168,134 @@
     <a href="control.html"> 📋 Control </a>
     <a href="envios.html"> 📋 Envios </a>
   </nav>
-<button onclick="logout()" style="background:red; color:white;">Salir</button>
 
   <iframe id="etiquetaFrame" style="display:none;"></iframe>
 
- <!-- GRID PRINCIPAL : 2 COLUMNAS REALES --> <div class="main-grid" style="margin-top:16px; display:grid; grid-template-columns: 1fr 300px; gap:20px;"> <!-- 🟩 COLUMNA IZQUIERDA (FORMULARIO + TARJETAS) --> <div style="width:100%;"> <div class="formulario" style="width:100%;"> <div style="width:100%;"> <span id="fechaHoraActual"></span> <label for="fechaManual">Fecha (opcional):</label> <input type="date" id="fechaManual" style="max-width:140px; padding:4px 6px; font-size:13px;"> <!-- BOTÓN GESTIONAR CLIENTES --> <button id="toggle-clientes" style="background:#ff9800; color:white; padding:10px 16px; border:none; border-radius:6px; cursor:pointer; font-size:16px; margin:15px 0 10px 0;"> 👥 Gestionar Clientes </button> <!-- ACORDEÓN DE CLIENTES --> <div id="contenedor-clientes" style="max-height:0; overflow:hidden; transition:0.5s ease; background:#fff8e1; border:1px solid #ff9800; border-radius:10px; padding:0 20px; margin-bottom:20px;"> <h2>Gestionar Clientes</h2> <input id="cliente-nombre" placeholder="Nombre del cliente" onkeyup="this.value=this.value.toUpperCase();" onkeydown="guardarClienteConEnter(event)"> <button onclick="agregarCliente()">Guardar Cliente</button> <select id="cliente-eliminar"> <option value="">Seleccionar cliente</option> </select> <button onclick="eliminarCliente()">Eliminar Cliente</button> <input id="cliente-nuevo-nombre" placeholder="Nuevo nombre del cliente"> <button onclick="editarCliente()">Editar Cliente</button> </div> <!-- REGISTRAR VENTA --> <h2>Registrar Venta</h2> <input id="venta-cliente" placeholder="Nombre del cliente" list="clientes" onkeydown="moverFoco(event, 'venta-id')"> <datalist id="clientes"></datalist> <input id="venta-id" placeholder="ID (opcional)" oninput="autocompletarVentaPorId()" onkeydown="moverFocoId(event)" style="max-width:120px;"> <input id="venta-producto" placeholder="Nombre del producto" onkeydown="moverFoco(event, 'venta-cantidad')" style="width:100%; margin-top:8px;"> <div style="display:flex; gap:8px; align-items:center; margin-top:8px;"> <input id="venta-cantidad" type="number" min="1" value="1" placeholder="Cant." style="max-width:80px;" onkeydown="moverFoco(event, 'venta-valor')"> </div> <label>Stock disponible: <span id="stock-disponible" style="font-weight:bold; color:blue;">0</span> </label> <input id="venta-valor" type="number" placeholder="Valor del producto" onkeydown="if(event.key==='Enter'){ registrarVenta(); }"> <button id="guardar-venta" onclick="registrarVenta()">Registrar Venta</button> <!-- TOTAL HOY --> <div id="total-hoy" style="font-size:30px; font-weight:bold; margin-top:20px;"> TOTAL VENDIDO HOY: $0 </div> <!-- BOTÓN VER OCULTAS --> <button id="btnVerOcultas" style="padding:6px 8px; font-size:11px; border-radius:4px; margin-top:10px;"> 👁️ VER OCULTAS </button> <!-- TARJETAS OCULTAS --> <div id="contenedorOcultas" style="display:none; padding:10px; background:#f8f9fa; border:1px solid #ccc; margin-top:10px;"> <h3>Tarjetas ocultas</h3> <div id="tarjetasOcultas"></div> </div> </div> </div> <!-- TARJETAS DE VENTA --> <div class="reporte" id="reporte" style="width:100%; margin-top:20px;"></div> <!-- MODAL EDITAR (se deja intacto) --> <div id="modal-editar" class="modal" aria-hidden="true"> <div class="modal-content"> ... </div> </div> </div> <!-- 🟦 COLUMNA DERECHA (INVENTARIO FIJO) --> <aside class="panel inventario-panel" style="background:white; padding:15px; border-radius:10px; border:1px solid #ccc; height:fit-content;"> <h2>📦 Inventario</h2> <div id="lista-inventario" style="max-height:70vh; overflow:auto; padding-right:5px;"> </div> <div style="margin-top:12px; font-size:13px; color:#666;"> Última actualización: <span id="inventario-ultima">N/A</span> </div> </aside> </div>
+  <div class="main-grid" style="margin-top:16px;">
+    <div>
+      <div class="formulario">
+        <div>
+          <span id="fechaHoraActual"></span>
+          <label for="fechaManual">Fecha (opcional):</label>
+          <input type="date" id="fechaManual" style="max-width:140px; padding:4px 6px; font-size:13px;">
+          <h2>Registrar Venta</h2>
 
+          <input id="venta-cliente" placeholder="Nombre del cliente" list="clientes" onkeydown="moverFoco(event, 'venta-id')">
+          <datalist id="clientes"></datalist>
 
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="venta-id" placeholder="ID (opcional)" oninput="autocompletarVentaPorId()" onkeydown="moverFocoId(event)" style="max-width:120px;">
+            <input id="venta-producto" placeholder="Nombre del producto" onkeydown="moverFoco(event, 'venta-cantidad')" style="flex:1;">
+            <input id="venta-cantidad" type="number" min="1" value="1" placeholder="Cant." style="max-width:80px;" onkeydown="moverFoco(event, 'venta-valor')">
+          </div>
 
-<script>
-window.db = firebase.database();
-firebase.auth().onAuthStateChanged(user => {
-    if (!user) {
-        console.warn("No hay sesión activa. Redirigiendo al login...");
-        window.location.href = "login.html";
-        return;
-    }
+          <label style="font-size:14px; font-weight:normal; margin-bottom:5px;">
+            Stock disponible: <span id="stock-disponible" style="font-weight:bold; color:blue;">0</span>
+          </label>
 
-    console.log("Usuario autenticado:", user.email);
+          <input id="venta-valor" type="number" placeholder="Valor del producto" onkeydown="moverFoco(event, 'guardar-venta')">
+          <button id="guardar-venta" onclick="registrarVenta()">Registrar Venta</button>
+        </div>
 
-    // 🔥 Aquí sí puedes cargar tu sistema
-    actualizarDatos();
-    mostrarVentas();
-    
-});
+        <div>
+          
+          <h2>Gestionar Clientes</h2>
+          <input id="cliente-nombre" placeholder="Nombre del cliente" onkeyup="this.value=this.value.toUpperCase();" onkeydown="guardarClienteConEnter(event)">
+          <button onclick="agregarCliente()">Guardar Cliente</button>
 
+          <select id="cliente-eliminar"><option value="">Seleccionar cliente</option></select>
+          <button onclick="eliminarCliente()">Eliminar Cliente</button>
 
+          <input id="cliente-nuevo-nombre" placeholder="Nuevo nombre del cliente">
+          <button onclick="editarCliente()">Editar Cliente</button>
+        </div>
+      </div>
 
-// ===============================
-// 🔥 LISTENERS EN TIEMPO REAL
-// ===============================
- let ventaEditandoUUID = null;
-// INVENTARIO EN TIEMPO REAL
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div id="total-hoy" style="font-size:30px; font-weight:bold;">TOTAL VENDIDO HOY: $0</div>
+        <button id="btnVerOcultas" style="padding:6px 8px; font-size:11px; border-radius:4px;">👁️ VER OCULTAS</button>
+      </div>
+
+      <div id="contenedorOcultas" style="display:none; padding:10px; background-color:#f8f9fa; border:1px solid #ccc; margin-top:10px;">
+        <h3>Tarjetas ocultas</h3>
+        <div id="tarjetasOcultas"></div>
+      </div>
+
+      <div class="reporte" id="reporte"></div>
+
+      <div id="modal-editar" class="modal" aria-hidden="true">
+        <div class="modal-content">
+          <h3>Editar Producto</h3>
+
+          <label for="editar-producto">Producto</label>
+          <input id="editar-producto" placeholder="Nombre del producto">
+          <div class="leyenda-modal">Cambia el nombre del producto</div>
+
+          <label for="editar-valor">Valor unitario</label>
+          <input id="editar-valor" type="number" placeholder="Valor del producto">
+          <div class="leyenda-modal">Cambia el valor unitario</div>
+
+          <label for="editar-cantidad">Cantidad</label>
+          <input id="editar-cantidad" type="number" min="1" placeholder="Cantidad">
+          <div class="leyenda-modal">Cambia la cantidad vendida</div>
+
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button onclick="guardarEdicion()">Guardar Cambios</button>
+            <button class="modal-close" onclick="cerrarModalEditar()">✖ Cerrar</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:20px 0;">
+        <label for="fecha-reporte" style="font-size:14px;">📅 Reporte:</label>
+        <input type="date" id="fecha-reporte" style="max-width:130px; padding:4px 6px; font-size:13px; height:32px; border-radius:4px;">
+        <button onclick="exportarExcel()" style="padding:5px 10px; font-size:13px; background-color:#007bff; color:white; border:none; border-radius:4px; height:34px;">📤 Exportar</button>
+        <button onclick="imprimirEtiquetasClientes()" style="padding:5px 10px; font-size:13px; background-color:#007bff; color:white; border:none; border-radius:4px; height:34px;">🖨️ Etiquetas</button>
+        <button onclick="descargarVentas()" style="padding:6px 12px; background-color:green; color:white; border-radius:6px; border:none;">📥 Descargar ventas</button>
+
+        <label for="inputArchivoJson" style="display:inline-block; padding:6px 12px; background-color:#007bff; color:white; border-radius:6px; cursor:pointer; font-weight:bold;">
+          📤 Cargar archivo JSON
+        </label>
+        <input type="file" id="inputArchivoJson" accept=".json" style="display:none;">
+      </div>
+
+      <div id="etiquetas-clientes" style="display:none;"></div>
+    </div>
+
+    <aside class="panel inventario-panel">
+      <h2>📦 Inventario</h2>
+      <div id="lista-inventario" style="max-height:70vh; overflow:auto;">
+        </div>
+      <div style="margin-top:12px; font-size:13px; color:#666;">
+        <div>Última actualización: <span id="inventario-ultima">N/A</span></div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+
 if (window.db) {
     window.db.ref("inventario").on("value", snap => {
         const data = snap.val() || {};
 
+        // Convertir a array y agregar firebaseId
         window.inventario = Object.keys(data).map(id => ({
             ...data[id],
             firebaseId: id
         }));
 
         localStorage.setItem("inventario", JSON.stringify(window.inventario));
-        if (typeof renderUI === "function") renderInventarioUI();
+
+        if (typeof renderInventarioUI === "function") {
+            renderInventarioUI();
+        }
     });
 }
 
-// VENTAS EN TIEMPO REAL
+
+
 if (window.db) {
-    console.log("🔄 Listener de ventas ACTIVADO");
+    console.log("🔄 Activando listener en tiempo real");
 
     window.db.ref("ventas").on("value", snap => {
         const data = snap.val() || {};
@@ -237,8 +306,11 @@ if (window.db) {
             uuid: id
         }));
 
-        if (JSON.stringify(window.ventas) !== JSON.stringify(nuevas)) {
-            console.log("📡 Cambios detectados → actualizando interfaz");
+        const antes = JSON.stringify(window.ventas || []);
+        const ahora = JSON.stringify(nuevas);
+
+        if (antes !== ahora) {
+            console.log("📡 Actualización detectada, refrescando UI");
             window.ventas = nuevas;
             localStorage.setItem("ventas", JSON.stringify(window.ventas));
             if (typeof mostrarVentas === "function") mostrarVentas();
@@ -246,12 +318,13 @@ if (window.db) {
     });
 }
 
-// AÑADIR SOLO NUEVAS VENTAS SIN DUPLICAR
+
 if (window.db) {
     window.db.ref("ventas").on("child_added", snap => {
         const data = snap.val();
         const id = snap.key;
 
+        // Evitar duplicados
         if (window.ventas.some(v => v.firebaseId === id)) return;
 
         const venta = {
@@ -261,7 +334,7 @@ if (window.db) {
             producto: data.producto,
             codigo: data.codigo,
             valor: Number(data.valor),
-            cantidad: Number(data.cantidad),
+            cantidad: Number(data.cantidad) || 1,
             fecha: data.fecha,
             estado: data.estado || "Pendiente",
             idInventario: data.idInventario || null,
@@ -271,185 +344,355 @@ if (window.db) {
 
         window.ventas.push(venta);
         localStorage.setItem("ventas", JSON.stringify(window.ventas));
+
         if (typeof mostrarVentas === "function") mostrarVentas();
+    });
+
+    //
+
+  if (window.db) {
+    window.db.ref("estadoTarjetas").on("value", snap => {
+        window.estadoClientesPrincipal = snap.val() || {};
+
+        // Volver a pintar ventas para que se oculten en todos los dispositivos
+        if (typeof mostrarVentas === "function") {
+            mostrarVentas();
+        }
     });
 }
 
-// TARJETAS OCULTAS EN TIEMPO REAL
+
 if (window.db) {
     window.db.ref("estadoTarjetas").on("value", snap => {
         window.estadoClientesPrincipal = snap.val() || {};
-        if (typeof mostrarVentas === "function") mostrarVentas();
+
+        if (typeof mostrarVentas === "function") {
+            mostrarVentas();
+        }
     });
 }
 
-// ===============================
-// 🔥 INICIALIZACIÓN
-// ===============================
+ let ventaEditandoUUID = null;
 
 console.log("Inicializando sistema…");
 
-function logout() {
-  firebase.auth().signOut()
-    .then(() => window.location.href = "login.html")
-    .catch(err => console.error("Error al cerrar sesión:", err));
-}
-
-
 async function cargarInicial() {
+    console.log("📥 Cargando datos iniciales…");
+
     if (!window.db) {
         console.error("Firebase no está inicializado");
         return;
     }
 
     await actualizarDatos();
-    mostrarVentas();
-    console.log("✔ Sistema listo");
+
+    if (typeof mostrarVentas === "function") mostrarVentas();
+
+    console.log("✔ Datos iniciales cargados");
 }
 
 cargarInicial();
 
-// ===============================
-// 🔥 BARRA DE CONEXIÓN
-// ===============================
 
-function actualizarEstadoConexion() {
-    const barra = document.getElementById("estado-conexion");
-    if (!barra) return;
+    
+  window.estadoClientesPrincipal = JSON.parse(localStorage.getItem('estadoClientesPrincipal') || '{}');
+  window.clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+  window.ventas = JSON.parse(localStorage.getItem('ventas') || '[]');
+  window.inventario = JSON.parse(localStorage.getItem('inventario') || '[]');
+  window.ventasPendientes = JSON.parse(localStorage.getItem('ventasPendientes') || '[]');
 
-    if (navigator.onLine) {
-        barra.textContent = "Conectado – En línea";
-        barra.style.background = "#28a745";
-        barra.style.color = "white";
-    } else {
-        barra.textContent = "Sin conexión – Trabajando Offline";
-        barra.style.background = "#ffc107";
-        barra.style.color = "black";
-    }
-}
+  let productoAEditar = null;
 
-window.addEventListener("online", actualizarEstadoConexion);
-window.addEventListener("offline", actualizarEstadoConexion);
-
-// ===============================
-// 🔥 CARGA DE LOCALSTORAGE
-// ===============================
-
-window.estadoClientesPrincipal = JSON.parse(localStorage.getItem('estadoClientesPrincipal') || '{}');
-window.clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
-window.ventas = JSON.parse(localStorage.getItem('ventas') || '[]');
-window.inventario = JSON.parse(localStorage.getItem('inventario') || '[]');
-window.ventasPendientes = JSON.parse(localStorage.getItem('ventasPendientes') || '[]');
-
-let productoAEditar = null;
-
-
-function logout() {
-  firebase.auth().signOut().then(() => {
-    window.location.href = "login.html";
-  });
-}
-
-// ===============================
-// 🔥 TARJETAS OCULTAS → FIREBASE
-// ===============================
- 
-
-async function ocultarTarjetaEnFirebase(cliente, fecha) {
+    async function ocultarTarjetaEnFirebase(cliente, fecha) {
     if (!window.db) return;
 
+    const clave = `principal_${cliente}_${fecha}`;
+
     try {
-        await window.db.ref("estadoTarjetas")
-            .child(`principal_${cliente}_${fecha}`)
-            .set({ oculto: true });
+        await window.db.ref("estadoTarjetas").child(clave).set({
+            oculto: true
+        });
     } catch (err) {
-        console.error("Error ocultando tarjeta:", err);
+        console.error("Error guardando ocultación:", err);
     }
 }
+
 
 async function mostrarTarjetaEnFirebase(cliente, fecha) {
     if (!window.db) return;
 
+    const clave = `principal_${cliente}_${fecha}`;
+
     try {
-        await window.db.ref("estadoTarjetas")
-            .child(`principal_${cliente}_${fecha}`)
-            .remove();
+        await window.db.ref("estadoTarjetas").child(clave).remove();
     } catch (err) {
         console.error("Error mostrando tarjeta:", err);
     }
 }
 
-// ===============================
-// 🔥 GUARDADO LOCAL
-// ===============================
-
-function guardarDatosLocal() {
+  
+  function guardarDatosLocal() {
     try {
         localStorage.setItem("ventas", JSON.stringify(window.ventas));
         localStorage.setItem("clientes", JSON.stringify(window.clientes));
         localStorage.setItem("inventario", JSON.stringify(window.inventario));
         localStorage.setItem("ventasPendientes", JSON.stringify(window.ventasPendientes));
+
+        // Evita errores si los labels NO existen
+        const lblTotalMes = document.getElementById("totalMes");
+        const lblPendiente = document.getElementById("pendientePago");
+        const lblPagado = document.getElementById("pagadoRango");
+
+        if (lblTotalMes) lblTotalMes.textContent = window.totalMesActual ?? "0";
+        if (lblPendiente) lblPendiente.textContent = window.pendienteDePago ?? "0";
+        if (lblPagado) lblPagado.textContent = window.pagadoEnRango ?? "0";
+
     } catch (e) {
-        console.error("Error guardando local:", e);
+        console.error("Error en guardarDatosLocal():", e);
     }
 }
 
-// ===============================
-// 🔥 FECHA/HORA
-// ===============================
 
-function actualizarFechaHora() {
+  function actualizarFechaHora() {
     const ahora = new Date();
-    const opciones = {
-        year:'numeric', month:'2-digit', day:'2-digit',
-        hour:'2-digit', minute:'2-digit', second:'2-digit'
-    };
-    document.getElementById('fechaHoraActual').textContent =
-        ahora.toLocaleString('es-CL', opciones).replace(',', '');
-}
+    const opciones = { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false };
+    document.getElementById('fechaHoraActual').textContent = ahora.toLocaleString('es-CL', opciones).replace(',', '');
+  }
+  setInterval(actualizarFechaHora, 1000);
+  
 
-setInterval(actualizarFechaHora, 1000);
+  function moverFoco(event, siguienteId) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const el = document.getElementById(siguienteId);
+      if (el) el.focus();
+    }
+  }
 
-// ===============================
-// 🔥 CORRELATIVO 1–99
-// ===============================
 
-function obtenerCodigoCorrelativo() {
-    let ultimo = parseInt(localStorage.getItem("ultimoCodigo") || "0");
-    let nuevo = ultimo + 1;
-    if (nuevo > 99) nuevo = 1;
-    localStorage.setItem("ultimoCodigo", nuevo);
-    return String(nuevo).padStart(2, '0');
-}
+  function moverFocoId(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const productoInput = document.getElementById('venta-producto');
+      if (productoInput.readOnly) {
+        document.getElementById('venta-cantidad').focus();
+      } else {
+        productoInput.focus();
+      }
+    }
+  }
 
-// ===============================
-// 🔥 DATALIST CLIENTES
-// ===============================
+ 
+  function obtenerCodigoCorrelativo() {
+    let ultimoCodigo = parseInt(localStorage.getItem("ultimoCodigo") || "0");
+    let nuevoCodigo = ultimoCodigo + 1;
+    if (nuevoCodigo > 99) nuevoCodigo = 1;
+    localStorage.setItem("ultimoCodigo", nuevoCodigo);
+    return String(nuevoCodigo).padStart(2, '0');
+  }
+  
 
 function actualizarDatalist() {
-    const datalist = document.getElementById('clientes');
+    // 🟢 CORRECCIÓN CRÍTICA: Ahora busca 'clientes' (el ID de tu datalist)
+    const datalist = document.getElementById('clientes'); 
+    
+    // El select de la gestión de clientes sigue siendo 'cliente-eliminar'
     const selectEliminar = document.getElementById('cliente-eliminar');
-
-    if (datalist) datalist.innerHTML = "";
+    
+    // 🧹 Limpiar y preparar
+    if (datalist) datalist.innerHTML = '';
     if (selectEliminar) {
-        selectEliminar.innerHTML = '<option value="">Seleccionar cliente</option>';
+        selectEliminar.innerHTML = '<option value="">Seleccionar cliente</option>'; 
     }
 
-    window.clientes.sort().forEach(c => {
+    // 🔄 Llenar ambas listas
+    window.clientes.sort().forEach(cliente => {
+        // Opción para Datalist (autocompletado en el formulario de venta)
         if (datalist) {
-            const o = document.createElement("option");
-            o.value = c;
-            datalist.appendChild(o);
+            const optionDatalist = document.createElement('option');
+            optionDatalist.value = cliente;
+            datalist.appendChild(optionDatalist);
         }
+        
+        // Opción para Select (eliminar/editar en gestión)
         if (selectEliminar) {
-            const o = document.createElement("option");
-            o.value = c;
-            o.textContent = c;
-            selectEliminar.appendChild(o);
+            const optionSelect = document.createElement('option');
+            optionSelect.value = cliente;
+            optionSelect.textContent = cliente;
+            selectEliminar.appendChild(optionSelect);
         }
     });
 }
 
+
+function agregarCliente() {
+    const input = document.getElementById('cliente-nombre');
+    const nuevo = input.value.trim().toUpperCase();
+
+    if (!nuevo) {
+        return alert('Por favor, ingrese un nombre de cliente.');
+    }
+
+    if (window.clientes.includes(nuevo)) {
+        return alert(`El cliente "${nuevo}" ya existe.`);
+    }
+
+    // 1. Añadir y guardar
+    window.clientes.push(nuevo);
+    guardarDatosLocal();
+    
+    // 2. Actualizar vistas
+    actualizarDatalist();
+    input.value = '';
+    alert(`Cliente "${nuevo}" guardado con éxito.`);
+}
+
+
+function guardarClienteConEnter(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault(); 
+        agregarCliente();
+    }
+}
+
+function editarCliente() {
+    const select = document.getElementById('cliente-eliminar');
+    const inputNuevoNombre = document.getElementById('cliente-nuevo-nombre');
+    
+    const nombreActual = select.value.trim().toUpperCase();
+    const nuevo = inputNuevoNombre.value.trim().toUpperCase();
+
+    if (!nombreActual) {
+        return alert('Primero, seleccione el cliente a editar de la lista desplegable.');
+    }
+
+    if (!nuevo) {
+        return alert('Ingrese el nuevo nombre para el cliente.');
+    }
+    
+    if (nuevo === nombreActual) {
+         return alert('El nuevo nombre es el mismo que el actual.');
+    }
+
+    if (window.clientes.includes(nuevo)) {
+        return alert(`El nombre "${nuevo}" ya existe en la lista de clientes.`);
+    }
+
+    // 1. Actualizar el cliente en la lista principal
+    const clienteIndex = window.clientes.findIndex(c => c === nombreActual);
+    if (clienteIndex > -1) {
+        window.clientes[clienteIndex] = nuevo;
+    } else {
+        return alert('Error: Cliente no encontrado.');
+    }
+
+
+    // 2. Actualizar todas las ventas históricas asociadas
+    window.ventas.forEach(v => {
+        if (v.cliente === nombreActual) {
+            v.cliente = nuevo;
+        }
+    });
+
+    // 3. Guardar, actualizar y limpiar
+    guardarDatosLocal();
+    actualizarDatalist(); // Refresca las listas de clientes
+    mostrarVentas(); // Refresca las tarjetas de venta con el nuevo nombre
+    select.value = '';
+    inputNuevoNombre.value = '';
+
+    alert(`Cliente "${nombreActual}" actualizado a "${nuevo}" con éxito. Las ventas históricas también fueron actualizadas.`);
+}
+
+async function eliminarCliente() {
+    const select = document.getElementById('cliente-eliminar');
+    const clienteAEliminar = select.value.trim().toUpperCase();
+
+    if (!clienteAEliminar) {
+        return alert('Seleccione un cliente a eliminar de la lista desplegable.');
+    }
+
+    const ventasDelCliente = window.ventas.filter(v => v.cliente === clienteAEliminar);
+
+    let mensajeConfirmacion = `¿Está seguro de que desea eliminar al cliente "${clienteAEliminar}"?`;
+    if (ventasDelCliente.length > 0) {
+        mensajeConfirmacion = `El cliente "${clienteAEliminar}" tiene ${ventasDelCliente.length} ventas registradas. ¿Está seguro de que desea eliminar al cliente y TODAS sus ventas históricas (local y en Firebase)?`;
+    } 
+
+    if (!confirm(mensajeConfirmacion)) return;
+
+    // 1. Eliminar las ventas asociadas en Firebase (si es posible)
+    if (ventasDelCliente.length > 0 && window.db && navigator.onLine) {
+        for (let v of ventasDelCliente) {
+            if (v.firebaseId) {
+                await window.db.ref('ventas').child(v.firebaseId).remove()
+                    .catch(e => console.error("Advertencia: Error eliminando venta en Firebase:", e));
+            }
+        }
+    }
+
+    // 2. Eliminar el cliente del arreglo y las ventas locales
+    window.ventas = window.ventas.filter(v => v.cliente !== clienteAEliminar);
+    window.clientes = window.clientes.filter(c => c !== clienteAEliminar);
+
+    // 3. Guardar, actualizar y limpiar
+    guardarDatosLocal();
+    actualizarDatalist(); 
+    mostrarVentas(); 
+    select.value = ''; 
+
+    alert(`Cliente "${clienteAEliminar}" y sus ventas históricas han sido eliminados.`);
+}
+
+
+
+function autocompletarVentaPorId() {
+    const id = document.getElementById('venta-id').value.trim().toUpperCase();
+    const productoInput = document.getElementById('venta-producto');
+    const stockSpan = document.getElementById('stock-disponible');
+    if (!id) {
+      productoInput.readOnly = false;
+      stockSpan.textContent = '0';
+      return;
+    }
+    const invent = window.inventario || [];
+    // CRÍTICO: Se completa la condición de búsqueda
+    const encontrado = invent.find(p => String(p.id).toUpperCase() === id || (p.codigo && String(p.codigo).toUpperCase() === id));
+    
+    if (encontrado) {
+      productoInput.value = encontrado.nombre || '';
+      productoInput.readOnly = true;
+      stockSpan.textContent = encontrado.cantidad || 0;
+    } else {
+      productoInput.readOnly = false;
+      stockSpan.textContent = '0';
+    }
+  }
+ 
+
+function renderInventarioUI() {
+    const lista = document.getElementById('lista-inventario');
+    lista.innerHTML = '';
+    const inventarioValido = window.inventario || [];
+    
+    // Ordenar por nombre (o como prefieras)
+    inventarioValido.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '')).forEach(producto => {
+        const div = document.createElement('div');
+        div.className = 'producto-inventario';
+        // Añadir el ID/Código si existe
+        const idText = producto.id ? `<span style="font-weight:bold; color:red;">[${producto.id}]</span> ` : '';
+        
+        div.innerHTML = `
+            <div>${idText}${producto.nombre}</div>
+            <div style="font-weight:bold;">Stock: ${producto.cantidad}</div>
+        `;
+        lista.appendChild(div);
+    });
+    
+    // Actualizar última fecha de carga
+    document.getElementById('inventario-ultima').textContent = new Date().toLocaleTimeString('es-CL');
+}
+ 
 
 async function actualizarDatos() {
     if (!window.db) {
@@ -517,164 +760,14 @@ if (snapshot.exists()) {
         window.ventas = ventasArray;
         localStorage.setItem('ventas', JSON.stringify(ventasArray));
         if (typeof mostrarVentas === 'function') mostrarVentas();
-        repararClientesFaltantes();
-
+        
     } catch (error) {
         console.error("❌ Error al cargar datos de Firebase:", error);
     }
   }
-
-
-function guardarClienteConEnter(event) {
-    if (event.key === "Enter") {
-        agregarCliente(); // llama a la función existente
-    }
-}
-
-// ===============================
-// 🔥 AGREGAR CLIENTE
-// ===============================
-
-async function agregarCliente() {
-    const input = document.getElementById("cliente-nombre");
-    const nuevo = input.value.trim().toUpperCase();
-
-    if (!nuevo) return alert("Nombre vacío.");
-
-    // Evita duplicados
-    if (window.clientes.includes(nuevo)) {
-        alert("Ese cliente ya existe.");
-        return;
-    }
-
-    // Agregar local
-    window.clientes.push(nuevo);
-    guardarDatosLocal();
-    actualizarDatalist();
-
-    // 🔥 Guardar también en Firebase para que aparezca en TODOS los dispositivos
-    try {
-        await window.db.ref("clientes/" + nuevo).set(nuevo);
-    } catch (e) {
-        console.error("Error subiendo cliente a Firebase:", e);
-    }
-
-    input.value = "";
-    alert(`Cliente "${nuevo}" guardado correctamente.`);
-}
-
-
-// ===============================
-// 🔥 EDITAR CLIENTE
-// ===============================
-
-function editarCliente() {
-    const select = document.getElementById('cliente-eliminar');
-    const nuevo = document.getElementById('cliente-nuevo-nombre').value.trim().toUpperCase();
-    const actual = select.value.trim().toUpperCase();
-
-    if (!actual) return alert("Selecciona cliente.");
-    if (!nuevo) return alert("Nuevo nombre vacío.");
-    if (window.clientes.includes(nuevo)) return alert("Ese nombre ya existe.");
-
-    window.clientes = window.clientes.map(c => c === actual ? nuevo : c);
-    window.ventas.forEach(v => { if (v.cliente === actual) v.cliente = nuevo });
-
-    guardarDatosLocal();
-    actualizarDatalist();
-    mostrarVentas();
-
-    alert(`Cliente actualizado a "${nuevo}".`);
-}
-
-// ===============================
-// 🔥 ELIMINAR CLIENTE
-// ===============================
-
-async function eliminarCliente() {
-    const select = document.getElementById("cliente-eliminar");
-    const cliente = select.value.trim().toUpperCase();
-
-    if (!cliente) return alert("Selecciona un cliente.");
-
-    const ventasCliente = window.ventas.filter(v => v.cliente === cliente);
-
-    if (!confirm(`Eliminar "${cliente}" y sus ${ventasCliente.length} ventas?`)) return;
-
-    if (window.db && navigator.onLine) {
-        for (let v of ventasCliente) {
-            if (v.firebaseId) {
-                await window.db.ref("ventas").child(v.firebaseId).remove().catch(()=>{});
-            }
-        }
-    }
-
-    window.ventas = window.ventas.filter(v => v.cliente !== cliente);
-    window.clientes = window.clientes.filter(c => c !== cliente);
-
-    guardarDatosLocal();
-    actualizarDatalist();
-    mostrarVentas();
-
-    alert("Cliente eliminado.");
-}
- // ===============================================
-// 🔥 REPARA CLIENTES FALTANTES EN FIREBASE
-// Detecta clientes que aparecen en ventas pero NO
-// están en el listado de clientes
-// ===============================================
-async function repararClientesFaltantes() {
-    const clientesDeVentas = [...new Set(ventas.map(v => v.cliente))].map(c => c.toUpperCase());
-
-    // Si nunca cargaron los clientes aún
-    if (!Array.isArray(window.clientes)) return;
-
-    const clientesLocales = window.clientes.map(c => c.toUpperCase());
-
-    // Buscar diferencias
-    const faltantes = clientesDeVentas.filter(c => !clientesLocales.includes(c));
-
-    if (faltantes.length === 0) return;
-
-    for (let cliente of faltantes) {
-        try {
-            // Guardar en LOCAL
-            window.clientes.push(cliente);
-            guardarDatosLocal();
-
-            // Guardar en Firebase
-            await window.db.ref("clientes/" + cliente).set(cliente);
-            console.log("Cliente reparado:", cliente);
-        } catch (e) {
-            console.error("Error reparando cliente:", cliente, e);
-        }
-    }
-
-    actualizarDatalist();
-}
-
-
- function moverFoco(event, siguienteId) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      const el = document.getElementById(siguienteId);
-      if (el) el.focus();
-    }
-  }
-
-
-  function moverFocoId(event) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      const productoInput = document.getElementById('venta-producto');
-      if (productoInput.readOnly) {
-        document.getElementById('venta-cantidad').focus();
-      } else {
-        productoInput.focus();
-      }
-    }
-  }
-
+  
+ 
+  
 function sincronizarVentasFirebase() {
       try {
         const ventasLocal = JSON.parse(localStorage.getItem("ventas") || "[]");
@@ -692,91 +785,143 @@ function sincronizarVentasFirebase() {
     actualizarEstadoConexion();
 
 
-function registrarVenta() {
-    const cliente = document.getElementById("venta-cliente").value.trim();
-    const producto = document.getElementById("venta-producto").value.trim();
-    const cantidad = parseInt(document.getElementById("venta-cantidad").value) || 1;
-    const valorUnitario = parseFloat(document.getElementById("venta-valor").value) || 0;
-    const idManual = document.getElementById("venta-id").value.trim();
-
-    if (!cliente || !producto || valorUnitario <= 0) {
-        alert("Completa cliente, producto y valor.");
+ 
+async function registrarVenta() { 
+    const clienteInput = document.getElementById('venta-cliente');
+    const cliente = clienteInput.value.trim();
+    if (!window.clientes.includes(cliente)) {
+        alert("Solo se pueden registrar ventas a clientes guardados.");
         return;
     }
 
-    // 📌 FECHA ACTUAL (MISMA LÓGICA QUE USAS SIEMPRE)
-    const fecha = new Date().toISOString().split("T")[0];
-    const hora = new Date().toLocaleTimeString("es-CL", { hour12: false });
+    // 1. Obtener el código correlativo único
+    const correlativoTransaccion = obtenerCodigoCorrelativo();
 
-    // -------------------------------------------------------
-    // 🟢 CORRELATIVO PERSISTENTE (01–99 con reinicio)
-    // -------------------------------------------------------
-    let correlativo = parseInt(localStorage.getItem("correlativo_actual") || "0") + 1;
-    if (correlativo > 99) correlativo = 1;
+    // 2. ID de inventario
+    const codigoInventario = document.getElementById('venta-id').value.trim();
 
-    const correlativoTxt = correlativo.toString().padStart(2, "0");
-    localStorage.setItem("correlativo_actual", correlativo);
-    // -------------------------------------------------------
+    const productoInput = document.getElementById('venta-producto');
+    const producto = productoInput.value.trim();
+    const valorIngresado = parseFloat(document.getElementById('venta-valor').value);
+    const cantidad = parseInt(document.getElementById('venta-cantidad').value) || 1;
 
-    // Creación de la venta
-    let nuevaVenta = {
-        uuid: crypto.randomUUID(),
-        correlativo: correlativoTxt,      // 🔥 AHORA SE GUARDA SIEMPRE
-        cliente,
-        producto,
-        cantidad,
-        valor: valorUnitario,
-        fecha,
-        hora,
-        embalado: false,
-        firebaseId: null,
-        pendiente: !navigator.onLine
-    };
+    const fechaManual = document.getElementById("fechaManual").value;
+    const fecha = fechaManual ? fechaManual : new Date().toLocaleDateString('sv-SE');
+    const ahora = new Date();
+    const hora = ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 
-    // -------------------------------------------------------
-    // 🟢 GUARDAR EN ARRAY PRINCIPAL
-    // -------------------------------------------------------
-    window.ventas.push(nuevaVenta);
-    guardarDatosLocal();
-
-     // Descontar stock local (si existe en inventario)
-  const prod = window.inventario ? window.inventario.find(p => p.codigo === codigo) : null;
-  if (prod) {
-    prod.cantidad = Math.max(0, prod.cantidad - cantidad);
-    localStorage.setItem("inventario", JSON.stringify(window.inventario));
-    // actualizar panel de inventario si existe la función
-    if (typeof renderInventarioPanel === 'function') renderInventarioPanel();
-  }
-
-    // -------------------------------------------------------
-    // 🟢 IMPRIMIR ETIQUETA
-    // -------------------------------------------------------
-   imprimirEtiquetaVenta(cliente, correlativoTxt, fecha);
-
-
-    // -------------------------------------------------------
-    // 🟢 SUBIR A FIREBASE (si hay internet)
-    // -------------------------------------------------------
-    if (navigator.onLine) {
-        const ref = db.ref("ventas").push();
-        nuevaVenta.firebaseId = ref.key;
-        ref.set(nuevaVenta);
-        guardarDatosLocal();
+    if (isNaN(valorIngresado) || valorIngresado <= 0 || !producto) {
+        alert("Ingrese un valor y producto válidos.");
+        return;
     }
 
-    // -------------------------------------------------------
-    // 🟢 LIMPIAR CAMPOS Y ACTUALIZAR VISTA
-    // -------------------------------------------------------
-   document.getElementById('venta-id').value = '';
-document.getElementById('venta-producto').value = '';
-document.getElementById('venta-cantidad').value = 1;
-document.getElementById('venta-valor').value = '';
-document.getElementById('venta-producto').focus();
+    // 🔥 VALOR UNITARIO REAL
+    const valorUnitario = valorIngresado;
 
-    mostrarVentas();
+    // -------------------------
+    //   3. AJUSTAR INVENTARIO
+    // -------------------------
+    if (codigoInventario) {
+        const idInv = codigoInventario.toUpperCase();
+        const prodLocal = window.inventario.find(p => String(p.codigo).toUpperCase() === idInv);
+
+        if (!prodLocal) {
+            alert(`Producto con ID/Código ${idInv} no se encuentra en inventario.`);
+            return;
+        }
+
+        if ((prodLocal.cantidad || 0) < cantidad) {
+            alert(`STOCK INSUFICIENTE: Solo quedan ${prodLocal.cantidad || 0} unidades.`);
+            return;
+        }
+
+        // Descuento en Firebase
+        if (window.db && navigator.onLine) {
+            try {
+                const ref = window.db.ref('inventario').child(prodLocal.firebaseId || idInv).child('cantidad');
+                const result = await ref.transaction(current => {
+                    const actual = parseInt(current || 0);
+                    const nuevo = actual - cantidad;
+                    if (nuevo < 0) return; 
+                    return nuevo;
+                });
+
+                if (result.committed) {
+                    prodLocal.cantidad = result.snapshot.val();
+                }
+
+            } catch(err) {
+                console.warn("Error ajustando inventario:", err);
+            }
+        } else {
+            prodLocal.cantidad = Math.max(0, (prodLocal.cantidad || 0) - cantidad);
+        }
+
+        localStorage.setItem("inventario", JSON.stringify(window.inventario));
+        if (typeof renderInventarioUI === "function") renderInventarioUI();
+    }
+
+    // ---------------------------------
+    //   🔥🔥 4. REGISTRAR UNA SOLA VENTA 🔥🔥
+    // ---------------------------------
+    let nuevaVenta = {
+        uuid: self.crypto.randomUUID(),
+        correlativo: correlativoTransaccion,
+        cliente: cliente,
+        codigo: codigoInventario,
+        producto: producto,
+        cantidad: cantidad,
+        valor: valorUnitario,
+        fecha: fecha,
+        hora: hora,
+        embalado: false,
+        firebaseId: null,
+        pendienteSincronizar: !!window.db
+    };
+
+    // Subida a Firebase
+    if (window.db && navigator.onLine) {
+        try {
+            const ventaFB = { ...nuevaVenta };
+            delete ventaFB.uuid;
+            delete ventaFB.pendienteSincronizar;
+
+            const newRef = await window.db.ref('ventas').push(ventaFB);
+            nuevaVenta.firebaseId = newRef.key;
+            nuevaVenta.pendienteSincronizar = false;
+
+        } catch(error) {
+            console.warn("Error subiendo venta:", error);
+            nuevaVenta.pendienteSincronizar = true;
+            window.ventasPendientes.push(nuevaVenta);
+        }
+    } else {
+        nuevaVenta.pendienteSincronizar = true;
+        window.ventasPendientes.push(nuevaVenta);
+    }
+
+    // Guardar local
+    // Si Firebase está online, NO agregamos localmente.
+// Firebase se encargará de disparar el onChildAdded.
+if (!window.db || !navigator.onLine) {
+    // Si Firebase está ONLINE, NO agregamos localmente.
+// Firebase disparará onChildAdded y la cargará correctamente.
+if (!window.db || !navigator.onLine) {
+    window.ventas.push(nuevaVenta);
 }
 
+}
 
+    guardarDatosLocal();
+
+    // Actualizar UI
+    mostrarVentas();
+
+    // Etiqueta solo una vez
+    if (typeof imprimirEtiquetaVenta === "function") {
+        imprimirEtiquetaVenta(cliente, correlativoTransaccion, fecha);
+    }
+}
 
 
 function mostrarVentas() {
@@ -902,7 +1047,7 @@ if (html) contenedorOcultas.insertAdjacentHTML('beforeend', html);
         // 1. Correlativo de Etiqueta (01-99)
         const corr = document.createElement('span');
         corr.textContent = v.correlativo || '';
-        Object.assign(corr.style, { fontWeight: 'bold', color: '#000000', fontSize: '14px', textAlign: 'center' }); // Texto centrado
+        Object.assign(corr.style, { fontWeight: 'bold', color: '#dc3545', fontSize: '14px', textAlign: 'center' }); // Texto centrado
 
         // 2. Código de Inventario (SKU)
         const cod = document.createElement('span');
@@ -911,25 +1056,25 @@ if (html) contenedorOcultas.insertAdjacentHTML('beforeend', html);
 
 
        // 3. Producto (Descripción)
-       const prod = document.createElement('span');
-        const cantidadTxt = (v.cantidad && v.cantidad > 1) ? ` (x${v.cantidad})` : '';
-       prod.textContent = `${v.producto || v.Producto || v.descripcion || '(sin descripción)'}${cantidadTxt}`;
-       Object.assign(prod.style, { 
-       overflow: 'hidden', 
-       textOverflow: 'ellipsis', 
-       whiteSpace: 'nowrap', 
-       fontSize: '14px' 
-        });
+const prod = document.createElement('span');
+const cantidadTxt = (v.cantidad && v.cantidad > 1) ? ` (x${v.cantidad})` : '';
+prod.textContent = `${v.producto || v.Producto || v.descripcion || '(sin descripción)'}${cantidadTxt}`;
+Object.assign(prod.style, { 
+  overflow: 'hidden', 
+  textOverflow: 'ellipsis', 
+  whiteSpace: 'nowrap', 
+  fontSize: '14px' 
+});
 
-       // 4. Valor TOTAL (valor * cantidad)
-       const val = document.createElement('span');
-       const totalProducto = (parseFloat(v.valor || 0));
-       val.textContent = `$${totalProducto}`;
-       Object.assign(val.style, { 
-       textAlign: 'right', 
-       fontWeight: 'bold', 
-        fontSize: '14px' 
-         });
+// 4. Valor TOTAL (valor * cantidad)
+const val = document.createElement('span');
+const totalProducto = (parseFloat(v.valor || 0));
+val.textContent = `$${totalProducto}`;
+Object.assign(val.style, { 
+  textAlign: 'right', 
+  fontWeight: 'bold', 
+  fontSize: '14px' 
+});
         
         // 5. Contenedor de Botones (Ocupa la última columna de 100px)
         const botonesProducto = document.createElement('div');
@@ -976,43 +1121,19 @@ if (html) contenedorOcultas.insertAdjacentHTML('beforeend', html);
       botonesContainer.style.gap = '10px';
       botonesContainer.style.marginTop = '10px';
 
-   
       const botonWsp = document.createElement('button');
-botonWsp.textContent = 'ENVIAR POR WHATSAPP';
-botonWsp.className = 'boton-wsp';
-botonWsp.onclick = () => {
-  
-  // 🔥 Agrupar productos
-  const ventasCliente = agrupado[fecha][cliente];
-  const resumenAgrupado = {};
-
-  ventasCliente.forEach(v => {
-    const clave = `${v.producto}||${v.valor}`;
-    if (!resumenAgrupado[clave]) {
-      resumenAgrupado[clave] = { producto: v.producto, valor: v.valor, cantidad: 1 };
-    } else {
-      resumenAgrupado[clave].cantidad++;
-    }
-  });
-
-  // 🔥 Construir texto
-  const textoProductos = Object.values(resumenAgrupado)
-    .map(item => {
-      return item.cantidad > 1 
-        ? `${item.producto} x${item.cantidad}   ===  $${item.valor }`
-        : `${item.producto}   ===  $${item.valor}`;
-    })
-    .join('\n');
-
-  const mensaje = encodeURIComponent(
-    `Hola ${cliente}, Menajes Vasaya agradece tu preferencia, se adjunta detalle y el total a pagar:\n` +
-    textoProductos +
-    `\nTotal: $${totalCliente}`
-  );
-
-  window.open(`https://wa.me/?text=${mensaje}`, '_blank');
-};
-
+      botonWsp.className = 'boton-wsp';
+      botonWsp.textContent = 'ENVIAR POR WHATSAPP';
+      botonWsp.onclick = () => {
+        const mensaje = encodeURIComponent(
+          `Hola ${cliente}, Menajes Vasaya agradece tu preferencia.\n` +
+          agrupado[fecha][cliente].map(v =>
+            `${v.producto} x${v.cantidad || 1} === $${parseFloat(v.valor || 0)}`
+          ).join('\n') +
+          `\nTotal: $${totalCliente}`
+        );
+        window.open(`https://wa.me/?text=${mensaje}`, '_blank');
+      };
 
       const btnEliminarTarjeta = document.createElement('button');
       btnEliminarTarjeta.textContent = 'ELIMINAR TARJETA';
@@ -1084,69 +1205,7 @@ botonWsp.onclick = () => {
 }
 
 
-function imprimirEtiquetaVenta(cliente, correlativo, fecha) {
-    const frame = document.getElementById('etiquetaFrame');
-
-    const contenidoHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Etiqueta ${correlativo}</title>
-            <style>
-                body { margin: 0; font-family: Arial, sans-serif; }
-                .etiqueta-print { 
-                    width: 100%; 
-                    height: 100%; 
-                    text-align: center; 
-                    padding: 10px;
-                    box-sizing: border-box;
-                }
-                .cliente-nombre { font-size: 12px; font-weight: bold; margin: 5px 0; }
-                .correlativo-codigo { font-size: 14px; font-weight: bolder; margin: 0; color: red; }
-                .fecha-dato { font-size: 12px; margin-top: 5px; }
-
-                @media print {
-                    body { visibility: hidden; }
-                    .etiqueta-print { visibility: visible; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="etiqueta-print">
-                <p class="cliente-nombre">${cliente}</p>
-                <h1 class="correlativo-codigo">${correlativo}</h1>
-                <p class="fecha-dato">${fecha}</p>
-         </div>
-        </body>
-        </html>
-    `;
-
-    // Inyectar el contenido en el iframe
-    frame.contentDocument.open();
-    frame.contentDocument.write(contenidoHTML);
-    frame.contentDocument.close();
-
-    // 🟢 Disparar la impresión
-    setTimeout(() => {
-        frame.contentWindow.print();
-
-        // 🔄 Limpiar SOLO después de cerrar el diálogo de impresión
-        limpiarCamposDespuesVenta();
-        document.getElementById('venta-cliente').focus();
-    }, 100);
-}
-
-
-function limpiarCamposDespuesVenta() {
-    // Limpia todos los campos de entrada de la venta
-    document.getElementById('venta-cliente').value = '';
-    document.getElementById('venta-id').value = '';
-    document.getElementById('venta-producto').value = '';
-    document.getElementById('venta-valor').value = '';
-    document.getElementById('venta-cantidad').value = 1; // Deja la cantidad en 1 (o 0 si prefiere)
-    document.getElementById('stock-disponible').textContent = 0;
-}
-
+    
 function crearBotonMostrarTarjeta(cliente, fecha, esOculta) {
     const clave = `principal_${cliente}_${fecha}`;
 
@@ -1180,6 +1239,78 @@ document.getElementById('btnVerOcultas').onclick = function() {
         this.textContent = '👁️ VER OCULTAS';
     }
 };
+
+
+
+function imprimirEtiquetaVenta(cliente, correlativo, fecha) {
+    const frame = document.getElementById('etiquetaFrame');
+    
+    // ... (El resto del código para generar el contenido HTML) ...
+    // [Asumo que el HTML de la etiqueta es el mismo que el del paso anterior]
+
+    const contenidoHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Etiqueta ${correlativo}</title>
+            <style>
+                /* ... (Estilos CSS de la etiqueta) ... */
+                body { margin: 0; font-family: Arial, sans-serif; }
+                .etiqueta-print { 
+                    width: 100%; 
+                    height: 100%; 
+                    text-align: center; 
+                    padding: 10px;
+                    box-sizing: border-box;
+                }
+                .cliente-nombre { font-size: 12px; font-weight: bold; margin: 5px 0; }
+                .correlativo-codigo { font-size: 14px; font-weight: bolder; margin: 0; color: red; }
+                .fecha-dato { font-size: 12px; margin: 5px 0 0 0; }
+                
+                @media print {
+                    body { visibility: hidden; }
+                    .etiqueta-print { visibility: visible; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="etiqueta-print">
+                <p class="cliente-nombre">${cliente}</p>
+                <h1 class="correlativo-codigo">${correlativo}</h1>
+                <p class="fecha-dato">${fecha}</p>
+                <p style="font-size:12px; margin-top:10px;
+            </div>
+        </body>
+        </html>
+    `;
+
+    // Inyectar el contenido en el iframe
+    frame.contentDocument.open();
+    frame.contentDocument.write(contenidoHTML);
+    frame.contentDocument.close();
+
+    // 🟢 CRÍTICO: Disparar la impresión y la limpieza
+    setTimeout(() => {
+        // Llama al diálogo de impresión
+        frame.contentWindow.print();
+
+        // Estas líneas se ejecutan INMEDIATAMENTE después de print(), 
+        // pero el navegador solo las procesa cuando el diálogo de impresión se cierra.
+        limpiarCamposDespuesVenta();
+        document.getElementById('venta-cliente').focus(); 
+    }, 100); 
+}
+
+  
+function limpiarCamposDespuesVenta() {
+    // Limpia todos los campos de entrada de la venta
+    document.getElementById('venta-cliente').value = '';
+    document.getElementById('venta-id').value = '';
+    document.getElementById('venta-producto').value = '';
+    document.getElementById('venta-valor').value = '';
+    document.getElementById('venta-cantidad').value = 1; // Deja la cantidad en 1 (o 0 si prefiere)
+    document.getElementById('stock-disponible').textContent = 0;
+}
 
 function abrirModalEditar(uuid) {
     productoAEditar = ventas.find(v => v.uuid === uuid);
@@ -1316,162 +1447,31 @@ function cerrarModalEditar() {
       if (navigator.onLine) sincronizarVentasFirebase();
     }, 10000);
   });
-// ===============================
-// 🔥 INVENTARIO UI
-// ===============================
 
-function renderInventarioUI() {
-    const lista = document.getElementById('lista-inventario');
-    lista.innerHTML = '';
 
-    // Inventario cargado desde Firebase
-    let inventarioValido = window.inventario || [];
 
-    // 1️⃣ Ocultar productos con stock 0
-    inventarioValido = inventarioValido.filter(p => Number(p.cantidad) > 0);
+function actualizarBarraConexion() {
+    const barra = document.getElementById("estado-conexion");
+    if (!barra) return;
 
-    // 2️⃣ Ordenar por código (numérico o alfanumérico)
-    inventarioValido.sort((a, b) => {
-        const codA = String(a.codigo).trim();
-        const codB = String(b.codigo).trim();
-
-        // Si ambos códigos son números → orden numérico real
-        if (!isNaN(codA) && !isNaN(codB)) {
-            return Number(codA) - Number(codB);
-        }
-
-        // Otros casos → orden natural
-        return codA.localeCompare(codB, 'es', { numeric: true });
-    });
-
-    // 3️⃣ Renderizar inventario ordenado
-    inventarioValido.forEach(producto => {
-        const div = document.createElement('div');
-        div.className = 'producto-inventario';
-
-        const idText = producto.codigo ? `${producto.codigo} - ` : "";
-        const nombreText = producto.nombre || "SIN NOMBRE";
-        const stockText = producto.cantidad !== undefined ? ` (${producto.cantidad})` : "";
-
-        // Contenedor principal del producto
-div.innerHTML = `
-    <span style="flex:1;">${idText}${nombreText}</span>
-    <span style="font-weight:bold; color:#007bff; min-width:50px; text-align:right;">
-        ${producto.cantidad}
-    </span>
-`;
-lista.appendChild(div);
-
-    });
-}
-
- // ===================================================
-// 🔥 GUARDAR VENTA CON SOPORTE OFFLINE
-// ===================================================
-function estaOnline() {
-    return navigator.onLine;
-}
-
-async function guardarVentaEnFirebase(ventaObj) {
-    if (estaOnline()) {
-        try {
-            const ref = window.db.ref("ventas").push();
-            await ref.set(ventaObj);
-            console.log("✔ Venta guardada en Firebase");
-        } catch (e) {
-            console.error("Error subiendo venta:", e);
-            guardarVentaOffline(ventaObj);
-        }
+    if (navigator.onLine) {
+        barra.style.background = "#7CFC00"; 
+        barra.style.color = "black";
+        barra.textContent = "CONECTADO – EN LÍNEA";
     } else {
-        guardarVentaOffline(ventaObj);
+        barra.style.background = "#f9d342"; 
+        barra.style.color = "black";
+        barra.textContent = "SIN CONEXIÓN – TRABAJANDO OFFLINE";
     }
 }
 
-// ===================================================
-// 🔥 GUARDAR VENTA LOCAL CUANDO NO HAY INTERNET
-// ===================================================
-function guardarVentaOffline(ventaObj) {
-    let pendientes = JSON.parse(localStorage.getItem("pendientesSubir") || "[]");
-    pendientes.push(ventaObj);
-    localStorage.setItem("pendientesSubir", JSON.stringify(pendientes));
-    console.log("📌 Venta guardada localmente (offline)");
-}
-
-// ===================================================
-// 🔥 SUBIR AUTOMÁTICAMENTE CUANDO VUELVE INTERNET
-// ===================================================
-// ========== 🔄 SINCRONIZADOR AUTOMÁTICO ==========
-setInterval(async () => {
-    if (!navigator.onLine || !window.db) return;
-
-    if (!window.ventasPendientes) window.ventasPendientes = [];
-
-    if (window.ventasPendientes.length === 0) return;
-
-    console.log("🔄 Intentando subir ventas pendientes...");
-
-    const pend = [...window.ventasPendientes];
-    window.ventasPendientes = [];
-
-    for (let venta of pend) {
-        try {
-            const ventaFB = { ...venta };
-            delete ventaFB.uuid;
-            delete ventaFB.pendiente;
-
-            const ref = await window.db.ref("ventas").push(ventaFB);
-            venta.firebaseId = ref.key;
-
-        } catch (e) {
-            console.warn("Error sincronizando una venta:", e);
-            venta.pendiente = true;
-            window.ventasPendientes.push(venta);
-        }
-    }
-
-    guardarDatosLocal();
-}, 5000);
-
-
-
-// ===============================
-// 🔥 CARGA INICIAL + SINCRONIZACIÓN
-// ===============================
+window.addEventListener("online", actualizarBarraConexion);
+window.addEventListener("offline", actualizarBarraConexion);
 
 document.addEventListener("DOMContentLoaded", () => {
-    actualizarFechaHora();
-    actualizarDatalist();
-    actualizarDatos();
-
-    // Auto-sync cada 10 segundos
-    setInterval(() => {
-        if (navigator.onLine) sincronizarVentasFirebase();
-    }, 10000);
-});
-
-// ===============================
-// FIN DEL SCRIPT
-// ===============================
-</script>
-<script>
-document.getElementById("toggle-clientes").addEventListener("click", () => {
-    const box = document.getElementById("contenedor-clientes");
-    const boton = document.getElementById("toggle-clientes");
-
-    if (box.style.maxHeight === "0px" || box.style.maxHeight === "") {
-        // Abrir
-        box.style.padding = "20px";
-        box.style.maxHeight = box.scrollHeight + "px";
-        boton.style.background = "#e68900";
-    } else {
-        // Cerrar
-        box.style.maxHeight = "0px";
-        box.style.padding = "0px 20px";
-        boton.style.background = "#ff9800";
-    }
+    actualizarBarraConexion();
 });
 </script>
-
 
 </body>
 </html>
