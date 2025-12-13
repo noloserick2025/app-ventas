@@ -977,13 +977,26 @@ if (fecha !== hoy) {
   continue;
 }
 
-      const claveOculta = `principal_${cliente}_${fecha}`;
-      if (window.estadoClientesPrincipal[claveOculta]?.oculto) {
-        const html = crearBotonMostrarTarjeta(cliente, fecha, true);
-if (html) contenedorOcultas.insertAdjacentHTML('beforeend', html);
+   const claveOculta = `principal_${cliente}_${fecha}`;
 
-        continue;
-      }
+// 🔥 CASO 1: tarjeta ocultada manualmente
+if (window.estadoClientesPrincipal[claveOculta]?.oculto) {
+  const html = crearBotonMostrarTarjeta(cliente, fecha, true);
+  if (html) contenedorOcultas.insertAdjacentHTML('beforeend', html);
+  continue;
+}
+
+// 🔥 CASO 2: fecha pasada NO visible → mandar a ocultas automáticamente
+if (fecha !== hoy) {
+  const html = crearBotonMostrarTarjeta(cliente, fecha, true)
+    || `<div class="tarjeta-oculta">
+          <strong>${cliente}</strong> (${fecha})
+          <button onclick="mostrarTarjeta('${cliente}','${fecha}')">Mostrar tarjeta</button>
+        </div>`;
+  contenedorOcultas.insertAdjacentHTML('beforeend', html);
+  continue;
+}
+
       hayTarjetasVisibles = true;
 
       const contenedor = document.createElement('div');
