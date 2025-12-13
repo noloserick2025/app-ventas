@@ -248,61 +248,7 @@ if (window.db) {
 
 // AÑADIR SOLO NUEVAS VENTAS SIN DUPLICAR
 // Al inicializar tu app
-window.ventas = window.ventas || [];
-window.ventasPendientes = window.ventasPendientes || [];
 
-if (window.db) {
-  window.db.ref('ventas').on('child_added', snapshot => {
-    const data = snapshot.val();
-    const firebaseId = snapshot.key;
-
-    // Buscar por firebaseId primero
-    const existePorFirebase = window.ventas.find(v => v.firebaseId === firebaseId);
-    if (existePorFirebase) return;
-
-    // A veces la venta local tiene uuid pero no firebaseId -> evitar duplicar
-    if (data.uuid) {
-      const existePorUuid = window.ventas.find(v => v.uuid === data.uuid);
-      if (existePorUuid) {
-        // Actualizar el objeto local con firebaseId para futuras comparaciones
-        existePorUuid.firebaseId = firebaseId;
-        existePorUuid.pendienteSincronizar = false;
-        guardarDatosLocal();
-        mostrarVentas();
-        return;
-      }
-    }
-
-    // Normal: agregar la venta traída desde Firebase
-    const venta = {
-      uuid: data.uuid || self.crypto.randomUUID(),
-      firebaseId: firebaseId,
-      correlativo: data.correlativo,
-      cliente: data.cliente,
-      codigo: data.codigo,
-      producto: data.producto,
-      cantidad: data.cantidad,
-      valor: data.valor,
-      fecha: data.fecha,
-      hora: data.hora,
-      embalado: !!data.embalado,
-      pendienteSincronizar: false
-    };
-
-    window.ventas.push(venta);
-    guardarDatosLocal();
-    mostrarVentas();
-  });
-}
-
-
-// TARJETAS OCULTAS EN TIEMPO REAL
-if (window.db) {
-    window.db.ref("estadoTarjetas").on("value", snap => {
-        window.estadoClientesPrincipal = snap.val() || {};
-        if (typeof mostrarVentas === "function") mostrarVentas();
-    });
-}
 
 // ===============================
 // 🔥 INICIALIZACIÓN
@@ -499,7 +445,7 @@ function actualizarDatalist() {
 }
 
 
-async function actualizarDatos() {
+//async function actualizarDatos() {
     if (!window.db) {
         console.error("Firebase no está inicializado. Verifica firebase-config.js.");
         // Intentar cargar desde local si falla Firebase
@@ -1615,6 +1561,71 @@ document.getElementById("toggle-clientes").addEventListener("click", () => {
         boton.style.background = "#ff9800";
     }
 });
+</script>
+<script>
+// =====================================================
+// 🔒 PARCHE DE ESTABILIDAD – NO BORRA NADA
+// =====================================================
+
+(function () {
+  if (!window.db) return;
+
+  let cargando = false;
+
+  window.db.ref("ventas").off();
+
+  window.db.ref("ventas").on("value", snap => {
+    if (cargando) return;
+    cargando = true;
+
+    const nuevas = [];
+
+    snap.forEach(child => {
+      const v = child.val();
+
+      nuevas.push({
+        firebaseId: child.key,
+        correlativo: v.correlativo || null,
+        cliente: v.cliente || "",
+        producto: v.producto || "",
+        cantidad: Number(v.cantidad || 1),
+        valor: Number(v.valor || 0),
+        fecha: v.fecha || "",
+        hora: v.hora || "",
+        codigo: v.codigo || "",
+        embalado: !!v.embalado,
+        oculto: !!v.oculto,
+        estado: v.estado || "Pendiente"
+      });
+    });
+
+    window.ventas = nuevas;
+
+    // 🔢 Reparar correlativos faltantes
+    let max = 0;
+    window.ventas.forEach(v => {
+      if (v.correlativo && !isNaN(v.correlativo)) {
+        max = Math.max(max, Number(v.correlativo));
+      }
+    });
+
+    window.ventas.forEach(v => {
+      if (!v.correlativo) {
+        max++;
+        const corr = String(max).padStart(6, "0");
+        v.correlativo = corr;
+        window.db.ref("ventas").child(v.firebaseId).update({ correlativo: corr });
+      }
+    });
+
+    if (typeof mostrarVentas === "function") {
+      mostrarVentas();
+    }
+
+    cargando = false;
+  });
+
+})();
 </script>
 
 
