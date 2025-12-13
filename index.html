@@ -967,6 +967,13 @@ for (const fecha of fechasOrdenadas) {
 
     for (const cliente in agrupado[fecha]) {
       const claveOculta = `principal_${cliente}_${fecha}`;
+// 🔥 SI NO ES HOY → SIEMPRE A OCULTAS (HISTÓRICO)
+if (fecha !== hoy) {
+  const html = crearBotonMostrarTarjeta(cliente, fecha, true);
+  if (html) contenedorOcultas.insertAdjacentHTML('beforeend', html);
+  continue;
+}
+
       if (window.estadoClientesPrincipal[claveOculta]?.oculto) {
         const html = crearBotonMostrarTarjeta(cliente, fecha, true);
 if (html) contenedorOcultas.insertAdjacentHTML('beforeend', html);
