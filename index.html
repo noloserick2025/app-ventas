@@ -247,33 +247,54 @@ if (window.db) {
 }
 
 // AÑADIR SOLO NUEVAS VENTAS SIN DUPLICAR
+// Al inicializar tu app
+window.ventas = window.ventas || [];
+window.ventasPendientes = window.ventasPendientes || [];
+
 if (window.db) {
-    window.db.ref("ventas").on("child_added", snap => {
-        const data = snap.val();
-        const id = snap.key;
+  window.db.ref('ventas').on('child_added', snapshot => {
+    const data = snapshot.val();
+    const firebaseId = snapshot.key;
 
-        if (window.ventas.some(v => v.firebaseId === id)) return;
+    // Buscar por firebaseId primero
+    const existePorFirebase = window.ventas.find(v => v.firebaseId === firebaseId);
+    if (existePorFirebase) return;
 
-        const venta = {
-            uuid: id,
-            firebaseId: id,
-            cliente: data.cliente,
-            producto: data.producto,
-            codigo: data.codigo,
-            valor: Number(data.valor),
-            cantidad: Number(data.cantidad),
-            fecha: data.fecha,
-            estado: data.estado || "Pendiente",
-            idInventario: data.idInventario || null,
-            embalado: !!data.embalado,
-            timestamp: data.timestamp || Date.now()
-        };
+    // A veces la venta local tiene uuid pero no firebaseId -> evitar duplicar
+    if (data.uuid) {
+      const existePorUuid = window.ventas.find(v => v.uuid === data.uuid);
+      if (existePorUuid) {
+        // Actualizar el objeto local con firebaseId para futuras comparaciones
+        existePorUuid.firebaseId = firebaseId;
+        existePorUuid.pendienteSincronizar = false;
+        guardarDatosLocal();
+        mostrarVentas();
+        return;
+      }
+    }
 
-        window.ventas.push(venta);
-        localStorage.setItem("ventas", JSON.stringify(window.ventas));
-        if (typeof mostrarVentas === "function") mostrarVentas();
-    });
+    // Normal: agregar la venta traída desde Firebase
+    const venta = {
+      uuid: data.uuid || self.crypto.randomUUID(),
+      firebaseId: firebaseId,
+      correlativo: data.correlativo,
+      cliente: data.cliente,
+      codigo: data.codigo,
+      producto: data.producto,
+      cantidad: data.cantidad,
+      valor: data.valor,
+      fecha: data.fecha,
+      hora: data.hora,
+      embalado: !!data.embalado,
+      pendienteSincronizar: false
+    };
+
+    window.ventas.push(venta);
+    guardarDatosLocal();
+    mostrarVentas();
+  });
 }
+
 
 // TARJETAS OCULTAS EN TIEMPO REAL
 if (window.db) {
@@ -308,6 +329,14 @@ async function cargarInicial() {
 }
 
 cargarInicial();
+
+
+function cargarDatosLocal() {
+  window.ventas = JSON.parse(localStorage.getItem('ventas') || '[]');
+  window.ventasPendientes = JSON.parse(localStorage.getItem('ventasPendientes') || '[]');
+}
+cargarDatosLocal();
+
 
 // ===============================
 // 🔥 BARRA DE CONEXIÓN
@@ -385,10 +414,10 @@ async function mostrarTarjetaEnFirebase(cliente, fecha) {
 
 function guardarDatosLocal() {
     try {
-        localStorage.setItem("ventas", JSON.stringify(window.ventas));
+        localStorage.setItem('ventas', JSON.stringify(window.ventas || []));
         localStorage.setItem("clientes", JSON.stringify(window.clientes));
         localStorage.setItem("inventario", JSON.stringify(window.inventario));
-        localStorage.setItem("ventasPendientes", JSON.stringify(window.ventasPendientes));
+        localStorage.setItem('ventasPendientes', JSON.stringify(window.ventasPendientes || []));
     } catch (e) {
         console.error("Error guardando local:", e);
     }
@@ -414,13 +443,32 @@ setInterval(actualizarFechaHora, 1000);
 // 🔥 CORRELATIVO 1–99
 // ===============================
 
-function obtenerCodigoCorrelativo() {
-    let ultimo = parseInt(localStorage.getItem("ultimoCodigo") || "0");
-    let nuevo = ultimo + 1;
-    if (nuevo > 99) nuevo = 1;
-    localStorage.setItem("ultimoCodigo", nuevo);
-    return String(nuevo).padStart(2, '0');
+async function obtenerCodigoCorrelativo() {
+  // Intentar obtener y aumentar correlativo atómico en Firebase
+  try {
+    if (window.db && navigator.onLine) {
+      const ref = window.db.ref('contadores').child('correlativoVentas');
+      const result = await ref.transaction(current => {
+        const actual = parseInt(current || 0, 10);
+        return actual + 1;
+      });
+
+      if (result && result.committed) {
+        return String(result.snapshot.val()).padStart(6, '0'); // formato opcional
+      }
+    }
+  } catch (err) {
+    console.warn("No se pudo usar contador Firebase:", err);
+  }
+
+  // Fallback local
+  const clave = 'correlativoVentas_local';
+  let local = parseInt(localStorage.getItem(clave) || '0', 10);
+  local = local + 1;
+  localStorage.setItem(clave, String(local));
+  return String(local).padStart(6, '0');
 }
+
 
 // ===============================
 // 🔥 DATALIST CLIENTES
@@ -691,151 +739,128 @@ function sincronizarVentasFirebase() {
     // Al cargar la página por primera vez
     actualizarEstadoConexion();
 
+async function sincronizarPendientes() {
+  if (!window.db || !navigator.onLine) return;
+  if (!window.ventasPendientes || window.ventasPendientes.length === 0) return;
+
+  const pendientes = [...window.ventasPendientes]; // copia
+  for (const v of pendientes) {
+    try {
+      const ventaFB = { ...v };
+      delete ventaFB.uuid;
+      delete ventaFB.pendienteSincronizar;
+
+      const ref = await window.db.ref('ventas').push(ventaFB);
+      v.firebaseId = ref.key;
+      v.pendienteSincronizar = false;
+
+      // eliminar de pendientes
+      window.ventasPendientes = window.ventasPendientes.filter(x => x.uuid !== v.uuid);
+
+    } catch (err) {
+      console.warn("Error sincronizando venta pendiente:", err);
+      // no interrumpir loop
+    }
+  }
+
+  guardarDatosLocal();
+  mostrarVentas();
+}
+window.addEventListener('online', sincronizarPendientes);
 
 
 async function registrarVenta() {
+  // Validaciones básicas
+  const cliente = document.getElementById('venta-cliente').value.trim();
+  if (!window.clientes.includes(cliente)) { alert("Solo clientes guardados."); return; }
 
-    // -----------------------------
-    // 1. VALIDAR CLIENTE
-    // -----------------------------
-    const cliente = document.getElementById('venta-cliente').value.trim();
-    if (!window.clientes.includes(cliente)) {
-        alert("Solo se pueden registrar ventas a clientes guardados.");
-        return;
+  const codigoInventario = document.getElementById('venta-id').value.trim();
+  const producto = document.getElementById('venta-producto').value.trim();
+  const valorUnitario = parseFloat(document.getElementById('venta-valor').value);
+  const cantidad = parseInt(document.getElementById('venta-cantidad').value) || 1;
+  if (!producto || isNaN(valorUnitario) || valorUnitario <= 0) { alert("Producto/valor inválido."); return; }
+
+  const fechaManual = document.getElementById("fechaManual").value;
+  const fecha = fechaManual ? fechaManual : new Date().toLocaleDateString('sv-SE');
+  const hora = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+
+  // Obtener correlativo (asegura persistencia)
+  const correlativo = await obtenerCodigoCorrelativo();
+
+  // Crear objeto base
+  const ventaLocal = {
+    uuid: self.crypto.randomUUID(),
+    correlativo,
+    cliente,
+    codigo: codigoInventario,
+    producto,
+    cantidad,
+    valor: valorUnitario,
+    fecha,
+    hora,
+    embalado: false,
+    firebaseId: null,
+    pendienteSincronizar: false
+  };
+
+  // Ajuste de inventario local y remoto (mismo enfoque que antes, verificar stock)
+  if (codigoInventario) {
+    const prodLocal = window.inventario.find(p => String(p.codigo).toUpperCase() === String(codigoInventario).toUpperCase());
+    if (!prodLocal) { alert("Producto no existe en inventario."); return; }
+    if ((prodLocal.cantidad || 0) < cantidad) { alert(`Stock insuficiente: ${prodLocal.cantidad || 0}`); return; }
+
+    try {
+      if (window.db && navigator.onLine) {
+        const refCant = window.db.ref('inventario').child(prodLocal.firebaseId).child('cantidad');
+        const result = await refCant.transaction(actual => {
+          actual = parseInt(actual || 0);
+          const nuevo = actual - cantidad;
+          if (nuevo < 0) return;
+          return nuevo;
+        });
+        if (result.committed) prodLocal.cantidad = result.snapshot.val();
+      } else {
+        prodLocal.cantidad = Math.max(0, (prodLocal.cantidad || 0) - cantidad);
+      }
+      localStorage.setItem("inventario", JSON.stringify(window.inventario));
+      if (typeof renderInventarioUI === "function") renderInventarioUI();
+    } catch (err) {
+      console.warn("Error actualizando inventario:", err);
     }
+  }
 
-    // -----------------------------
-    // 2. DATOS PRINCIPALES
-    // -----------------------------
-    const codigoInventario = document.getElementById('venta-id').value.trim();
-    const producto = document.getElementById('venta-producto').value.trim();
-    const valorUnitario = parseFloat(document.getElementById('venta-valor').value);
-    const cantidad = parseInt(document.getElementById('venta-cantidad').value) || 1;
+  // SUBIR A FIREBASE — intentar primero y sólo push si online
+  if (window.db && navigator.onLine) {
+    try {
+      const ventaFB = { ...ventaLocal };
+      delete ventaFB.uuid;
+      delete ventaFB.pendienteSincronizar;
 
-    if (!producto || isNaN(valorUnitario) || valorUnitario <= 0) {
-        alert("Ingrese un producto y valor válido.");
-        return;
+      const ref = await window.db.ref('ventas').push(ventaFB);
+      ventaLocal.firebaseId = ref.key;
+      ventaLocal.pendienteSincronizar = false;
+
+      // Guardar local (con firebaseId para que no duplique con onChildAdded)
+      window.ventas.push(ventaLocal);
+
+    } catch (err) {
+      console.warn("Error push venta:", err);
+      ventaLocal.pendienteSincronizar = true;
+      window.ventasPendientes.push(ventaLocal);
+      window.ventas.push(ventaLocal);
     }
+  } else {
+    ventaLocal.pendienteSincronizar = true;
+    window.ventasPendientes.push(ventaLocal);
+    window.ventas.push(ventaLocal);
+  }
 
-    // Fecha manual u hoy (YYYY-MM-DD)
-    const fechaManual = document.getElementById("fechaManual").value;
-    const fecha = fechaManual ? fechaManual : new Date().toLocaleDateString('sv-SE');
+  guardarDatosLocal();
+  mostrarVentas();
 
-    // Hora
-    const hora = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-
-    // -----------------------------
-    // 3. CORRELATIVO REAL
-    // -----------------------------
-    const correlativo = obtenerCodigoCorrelativo();
-
-    // -----------------------------
-    // 4. CONTROL DE INVENTARIO
-    // -----------------------------
-    if (codigoInventario) {
-        const idInv = codigoInventario.toUpperCase();
-        const prodLocal = window.inventario.find(p => String(p.codigo).toUpperCase() === idInv);
-
-        if (!prodLocal) {
-            alert(`Producto con código ${idInv} no existe en inventario.`);
-            return;
-        }
-
-        if (prodLocal.cantidad < cantidad) {
-            alert(`Stock insuficiente. Solo quedan ${prodLocal.cantidad}.`);
-            return;
-        }
-
-        // Descuento en Firebase si hay conexión
-        try {
-            if (window.db && navigator.onLine) {
-                const refCant = window.db.ref('inventario').child(prodLocal.firebaseId).child('cantidad');
-
-                const result = await refCant.transaction(actual => {
-                    actual = parseInt(actual || 0);
-                    const nuevo = actual - cantidad;
-                    if (nuevo < 0) return; 
-                    return nuevo;
-                });
-
-                if (result.committed) {
-                    prodLocal.cantidad = result.snapshot.val();
-                }
-            } else {
-                prodLocal.cantidad -= cantidad;
-            }
-        } catch (err) {
-            console.warn("Error en inventario:", err);
-        }
-
-        // Guardar inventario local
-        localStorage.setItem("inventario", JSON.stringify(window.inventario));
-        if (typeof renderInventarioUI === "function") renderInventarioUI();
-    }
-
-    // -----------------------------
-    // 5. CREAR OBJETO VENTA
-    // -----------------------------
-    let venta = {
-        uuid: self.crypto.randomUUID(),
-        correlativo: correlativo,
-        cliente: cliente,
-        codigo: codigoInventario,
-        producto: producto,
-        cantidad: cantidad,
-        valor: valorUnitario, // se mantiene unitario
-        fecha: fecha,
-        hora: hora,
-        embalado: false,
-        firebaseId: null,
-        pendienteSincronizar: false
-    };
-
-    // -----------------------------
-    // 6. SUBIR A FIREBASE
-    // -----------------------------
-    if (window.db && navigator.onLine) {
-        try {
-            const ventaFB = { ...venta };
-            delete ventaFB.uuid;
-
-            const ref = await window.db.ref('ventas').push(ventaFB);
-
-            venta.firebaseId = ref.key;
-            venta.pendienteSincronizar = false;
-
-        } catch (error) {
-            console.warn("Error subiendo a Firebase:", error);
-            venta.pendienteSincronizar = true;
-            window.ventasPendientes.push(venta);
-        }
-    } else {
-        venta.pendienteSincronizar = true;
-        window.ventasPendientes.push(venta);
-    }
-
-    // -----------------------------
-    // 7. GUARDAR LOCAL (SIN DUPLICAR)
-    // -----------------------------
-    // ❗ Solo agregamos localmente si Firebase NO va a disparar onChildAdded
-    if (!window.db || !navigator.onLine) {
-        window.ventas.push(venta);
-    }
-
-    guardarDatosLocal();
-
-    // -----------------------------
-    // 8. ACTUALIZAR UI
-    // -----------------------------
-    mostrarVentas();
-
-    // -----------------------------
-    // 9. IMPRIMIR ETIQUETA
-    // -----------------------------
-    if (typeof imprimirEtiquetaVenta === "function") {
-        imprimirEtiquetaVenta(cliente, correlativo, fecha);
-    }
+  if (typeof imprimirEtiquetaVenta === "function") imprimirEtiquetaVenta(cliente, correlativo, fecha);
 }
+
 
 
 
@@ -1260,6 +1285,66 @@ function cerrarModalEditar() {
     productoAEditar = null;
   }
   
+async function editarVenta(uuidOrFirebaseId, cambios) {
+  // encontrar venta (por firebaseId o uuid)
+  const idx = window.ventas.findIndex(v => v.firebaseId === uuidOrFirebaseId || v.uuid === uuidOrFirebaseId);
+  if (idx === -1) { alert("Venta no encontrada"); return; }
+
+  const original = window.ventas[idx];
+  const copia = { ...original, ...cambios };
+
+  // Validaciones básicas
+  if (!copia.producto || isNaN(copia.valor) || copia.valor <= 0) { alert("Datos inválidos"); return; }
+  if (!Number.isInteger(parseInt(copia.cantidad))) { alert("Cantidad inválida"); return; }
+
+  // Ajuste de inventario: si cambia cantidad y hay codigo, revertir diferencia
+  try {
+    if (original.codigo) {
+      const prodLocal = window.inventario.find(p => String(p.codigo).toUpperCase() === String(original.codigo).toUpperCase());
+      if (prodLocal) {
+        const diff = parseInt(copia.cantidad) - parseInt(original.cantidad || 0);
+        // Si diff > 0: necesitamos descontar más stock. Si diff < 0: devolver stock.
+        if (window.db && navigator.onLine && prodLocal.firebaseId) {
+          const refCant = window.db.ref('inventario').child(prodLocal.firebaseId).child('cantidad');
+          await refCant.transaction(actual => {
+            actual = parseInt(actual || 0);
+            const nuevo = actual - diff;
+            if (nuevo < 0) return; // no permitimos llevar a negativo
+            return nuevo;
+          });
+          // actualizar local
+          prodLocal.cantidad = Math.max(0, (prodLocal.cantidad || 0) - diff);
+        } else {
+          prodLocal.cantidad = Math.max(0, (prodLocal.cantidad || 0) - diff);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Error ajustando inventario al editar:", err);
+  }
+
+  // Actualizar en Firebase
+  try {
+    if (window.db && navigator.onLine && original.firebaseId) {
+      const up = { ...copia };
+      delete up.uuid;
+      delete up.firebaseId;
+      delete up.pendienteSincronizar;
+      await window.db.ref('ventas').child(original.firebaseId).update(up);
+      copia.pendienteSincronizar = false;
+    } else {
+      copia.pendienteSincronizar = true;
+    }
+  } catch (err) {
+    console.warn("Error actualizando venta en Firebase:", err);
+    copia.pendienteSincronizar = true;
+  }
+
+  // Reemplazar localmente y guardar
+  window.ventas[idx] = copia;
+  guardarDatosLocal();
+  mostrarVentas();
+}
 
   async function guardarEdicion() {
     if (!productoAEditar) return;
