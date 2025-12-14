@@ -441,6 +441,44 @@ async function mostrarTarjetaEnFirebase(cliente, fecha) {
     }
 }
 
+
+function descargarVentas() {
+  if (!window.ventas || !Array.isArray(window.ventas) || window.ventas.length === 0) {
+    alert("⚠️ No hay ventas cargadas para descargar.");
+    return;
+  }
+
+  // Fecha actual para el nombre del archivo
+  const ahora = new Date();
+  const fecha = ahora.toISOString().split("T")[0];
+  const hora = ahora.toTimeString().split(" ")[0].replace(/:/g, "-");
+
+  const nombreArchivo = `respaldo_ventas_${fecha}_${hora}.json`;
+
+  // Copia profunda (blindaje)
+  const ventasCopia = JSON.parse(JSON.stringify(window.ventas));
+
+  const contenido = JSON.stringify({
+    respaldoGenerado: new Date().toISOString(),
+    totalVentas: ventasCopia.length,
+    ventas: ventasCopia
+  }, null, 2);
+
+  const blob = new Blob([contenido], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nombreArchivo;
+  document.body.appendChild(link);
+  link.click();
+
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  alert(`✅ Respaldo generado correctamente\nVentas: ${ventasCopia.length}`);
+}
+
   
   function guardarDatosLocal() {
     try {
