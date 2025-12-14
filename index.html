@@ -328,27 +328,38 @@ if (window.db) {
         if (window.ventas.some(v => v.firebaseId === id)) return;
 
         const venta = {
+            // 🔑 USAR firebaseId como ID único REAL
             uuid: id,
             firebaseId: id,
+
             cliente: data.cliente,
             producto: data.producto,
-            codigo: data.codigo,
-            valor: Number(data.valor),
+            codigo: data.codigo || "",
             cantidad: Number(data.cantidad) || 1,
+            valor: Number(data.valor) || 0,
+
+            // 🔥 CLAVE: mantener correlativo
+            correlativo: data.correlativo || "",
+
             fecha: data.fecha,
+            hora: data.hora || "",
+            embalado: !!data.embalado,
+
             estado: data.estado || "Pendiente",
             idInventario: data.idInventario || null,
-            embalado: !!data.embalado,
+
             timestamp: data.timestamp || Date.now()
         };
 
         window.ventas.push(venta);
+
+        // Guardado local solo como cache
         localStorage.setItem("ventas", JSON.stringify(window.ventas));
 
         if (typeof mostrarVentas === "function") mostrarVentas();
     });
+}
 
-    //
 
   if (window.db) {
     window.db.ref("estadoTarjetas").on("value", snap => {
