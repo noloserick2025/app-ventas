@@ -1,301 +1,224 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
 <meta charset="UTF-8">
-<title>Envíos</title>
-<!-- Firebase compat -->
+<title>Envíos - Sincronización Total</title>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-
 <script src="firebase-config.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f9f9f9; }
-nav { background:#333; color:white; padding:10px; }
-nav a { color:white; text-decoration:none; margin-right:20px; font-weight:bold; }
-.contenido { padding:20px; }
-.cliente-reporte { background-color: LightPink; border-radius:10px; padding:15px; margin-bottom:20px; box-shadow:0 2px 6px rgba(0,0,0,0.1); display:flex; flex-direction:column; gap:10px; }
-.cliente-header { display:flex; justify-content:space-between; font-weight:bold; font-size:1.2em; }
-.productos-container { display:flex; flex-direction:column; gap:8px; }
-.producto { display:grid; grid-template-columns:auto auto 1fr auto auto auto; gap:8px; align-items:center; padding:10px; border:1px solid #ccc; border-radius:6px; background-color:white; font-weight:bold; }
-.producto-info { font-size:0.85em; color:#007bff; margin-top:4px; }
-.fecha-envio { margin-top:5px; font-size:0.9em; color:#007bff; }
-input[type="date"] { padding:4px; border-radius:5px; border:1px solid #aaa; margin-bottom:5px; width:fit-content; }
-.boton-mini { padding:4px 8px; margin-left:5px; border:none; border-radius:5px; cursor:pointer; font-size:0.8em; }
-.boton-mini.enviar-activo { background-color:#28a745; color:white; }
-.boton-mini.entregar-activo { background-color:#007bff; color:white; }
-.producto-info { font-size:0.85em; color:#555; margin-left:10px; }
-.producto.enviado { background-color:#43E051; }
-.producto.entregado { background-color:#43BEE0; }
-.tarjeta-enviada { background-color:#3CC21B; }
-.tarjeta-entregada { background-color:#4292E3; }
-.boton-ocultar { background-color:#FFD700; color:white; border:none; padding:4px 8px; font-size:0.8rem; border-radius:4px; cursor:pointer; margin-top:5px; align-self:flex-end; }
-#tarjetasOcultas { display:none; padding:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; }
-.embalado { background-color:orange !important; color:white; font-weight:bold; }
-.fleje-oculto { display:flex; align-items:center; width:100%; min-height:48px; padding:12px 16px; background-color:#6c757d; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; box-sizing:border-box; text-align:left; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; margin:0; padding:0; background:#f0f2f5; color: #1c1e21; }
+    nav { background:#2c3e50; color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    nav a { color:white; text-decoration:none; margin-right:20px; font-weight:bold; }
+    
+    .contenido { padding:15px; max-width: 1100px; margin: auto; }
+    
+    .panel-superior { background:white; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+    .filtros { display:flex; gap:12px; flex-wrap: wrap; }
+    .filtros div { flex: 1; min-width: 150px; }
+    input { width: 100%; padding:10px; border:1px solid #ddd; border-radius:8px; box-sizing: border-box; font-size: 14px; }
+
+    #contenedorOcultas { display:none; padding:12px; background:#f8f9fa; border-radius:8px; border: 1px dashed #adb5bd; margin-top:12px; }
+    .grid-ocultos { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+
+    /* Tarjetas Optimizadas */
+    .cliente-reporte { background: #60E342; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); contain: content; }
+    .cliente-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .cliente-info b { font-size: 1.1rem; text-transform: uppercase; }
+    
+    .producto-item { background: rgba(255,255,255,0.8); border-radius:10px; padding:10px; margin:6px 0; border-left: 6px solid transparent; transition: all 0.2s; }
+    .producto-fila-main { display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+    
+    /* Estados Visuales */
+    .status-enviado { border-left-color: #27ae60 !important; background: #e8f5e9 !important; }
+    .status-entregado { border-left-color: #2980b9 !important; background: #e3f2fd !important; }
+
+    .btn { border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:700; font-size:10px; text-transform:uppercase; }
+    .btn-enviar { background:#27ae60; color:white; }
+    .btn-entregar { background:#2980b9; color:white; }
+    .btn-revertir { background:#eb4d4b; color:white; }
+    .btn-ocultar { background:none; color:#c0392b; font-size:24px; font-weight: bold; }
+    .btn-restaurar { background:#34495e; color:white; padding:8px; border-radius:6px; font-size:10px; border:none; cursor:pointer; }
+
+    .msg-enviado { font-size: 10px; font-weight: 800; color: #1b5e20; margin-top: 4px; padding-left: 5px; }
 </style>
 </head>
-
 <body>
-<nav style="background:#333; font-size: 40px; padding:14px; color:white;">
-<a href="index.html">🏠 Ventas</a>
-<a href="inventario.html">📦 Inventario</a>
-<a href="control.html">📋 Control</a>
-<a href="envios.html">📋 Envios</a>
+
+<nav>
+    <div><a href="index.html">⬅ VENTAS</a><a href="envios.html">ENVÍOS</a></div>
+    <button id="btnVerOcultas" class="btn" style="background:#f39c12; color:white;">📦 OCULTAS (<span id="count-ocultos">0</span>)</button>
 </nav>
 
 <div class="contenido">
-<h1>PANEL DE ENVIOS/ENTREGAS</h1>
-
-<label for="filtroCliente">Filtrar por cliente:</label>
-<select id="filtroCliente" onchange="mostrarEnvios()">
-<option value="">-- Ver todos --</option>
-</select>
-
-<button id="btnVerOcultas">👁 Ver tarjetas ocultas</button>
-<div id="contenedorOcultas" style="display:none; padding:10px;">
-<h3>Tarjetas ocultas</h3>
-<div id="tarjetasOcultas"></div>
-</div>
-
-<div id="reporte"></div>
+    <div class="panel-superior">
+        <div class="filtros">
+            <div><label style="font-size:10px; font-weight:bold;">FECHA</label><input type="date" id="f-fecha"></div>
+            <div style="flex:2"><label style="font-size:10px; font-weight:bold;">CLIENTE</label><input type="text" id="f-cliente" list="dl-clientes" placeholder="Buscar..."></div>
+            <datalist id="dl-clientes"></datalist>
+        </div>
+        <div id="contenedorOcultas"><div id="lista-ocultos" class="grid-ocultos"></div></div>
+    </div>
+    <div id="reporte-envios"></div>
 </div>
 
 <script>
-// ====================
-// REFERENCIAS FIREBASE
-// ====================
-window.db = firebase.database();
-firebase.auth().onAuthStateChanged(user => { if(!user) window.location.href="login.html"; });
+    // Configuración de persistencia para evitar lentitud
+    firebase.database().goOnline(); 
 
-// ====================
-// VARIABLES GLOBALES
-// ====================
-let ventas = [];
-let estadoEnvios = {};
-let estadoClientesEnvios = {};
-let fechaInputs = {};
-let mostrarOcultas = false;
+    let ventasData = [];
+    let ocultos = JSON.parse(localStorage.getItem('envios_v_sync') || "[]");
+    const db = firebase.database();
 
-// ====================
-// FUNCIONES FIREBASE
-// ====================
-
-// Cargar ventas en tiempo real
-function cargarVentas() {
-    window.db.ref('ventas').on('value', snapshot => {
-        ventas = snapshot.val() ? Object.values(snapshot.val()) : [];
-        cargarClientesEnFiltro();
-        mostrarEnvios();
-    });
-}
-
-// Cargar estados en tiempo real
-function cargarEstados() {
-    window.db.ref('estadoEnvios').on('value', snap => {
-        estadoEnvios = snap.val() || {};
-        mostrarEnvios();
-    });
-    window.db.ref('estadoClientesEnvios').on('value', snap => {
-        estadoClientesEnvios = snap.val() || {};
-        mostrarEnvios();
-    });
-}
-
-// Guardar estado individual de envío
-function guardarEstadoEnvio(clave, estado) {
-    window.db.ref('estadoEnvios/' + clave).set(estado);
-}
-
-// Guardar estado de tarjeta (oculta/visible)
-function guardarEstadoCliente(clave, estado) {
-    window.db.ref('estadoClientesEnvios/' + clave).set(estado);
-}
-
-// ====================
-// FILTRO CLIENTE
-// ====================
-function cargarClientesEnFiltro() {
-    const select = document.getElementById("filtroCliente");
-    const clientes = [...new Set(ventas.map(v => v.cliente))].sort();
-    select.innerHTML = `<option value="">-- Ver todos --</option>`;
-    clientes.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c; opt.textContent = c;
-        select.appendChild(opt);
-    });
-}
-
-// ====================
-// MOSTRAR ENVÍOS / ENTREGAS
-// ====================
-function mostrarEnvios() {
-    const contenedor = document.getElementById('reporte');
-    contenedor.innerHTML = '';
-
-    const filtro = document.getElementById("filtroCliente").value;
-
-    // Agrupar por cliente → fecha
-    const agrupado = {};
-    ventas.forEach(v => {
-        const fecha = v.fecha?.split('T')[0] || 'Fecha desconocida';
-        const cliente = v.cliente;
-        if(filtro && filtro !== cliente) return;
-        if(!agrupado[cliente]) agrupado[cliente] = {};
-        if(!agrupado[cliente][fecha]) agrupado[cliente][fecha] = [];
-        agrupado[cliente][fecha].push(v);
+    // 1. LISTENER REALTIME EFICIENTE
+    // Usamos 'value' pero con una técnica de renderizado diferido
+    db.ref("ventas").on("value", snapshot => {
+        const val = snapshot.val();
+        ventasData = val ? Object.keys(val).map(k => ({...val[k], firebaseId: k})) : [];
+        
+        // Actualizar Datalist solo si es necesario
+        actualizarDatalist();
+        
+        // Renderizado optimizado
+        window.requestAnimationFrame(mostrarEnvios);
     });
 
-    // Ordenar clientes alfabéticamente
-    Object.keys(agrupado).sort().forEach(cliente => {
-        const fechas = Object.keys(agrupado[cliente]).sort((a,b) => new Date(a)-new Date(b));
-        fechas.forEach(fecha => {
-            const claveOculta = `envios_${cliente}_${fecha}`;
-            if(estadoClientesEnvios[claveOculta]?.oculto) return;
+    function actualizarDatalist() {
+        const nombres = [...new Set(ventasData.map(v => v.cliente))].filter(Boolean).sort();
+        const dl = document.getElementById('dl-clientes');
+        if(dl.childNodes.length !== nombres.length) {
+            dl.innerHTML = nombres.map(n => `<option value="${n.toUpperCase()}">`).join('');
+        }
+    }
 
-            const tarjeta = document.createElement('div'); tarjeta.className='cliente-reporte';
+    function mostrarEnvios() {
+        const contenedor = document.getElementById('reporte-envios');
+        const listaOcultos = document.getElementById('lista-ocultos');
+        const fFecha = document.getElementById('f-fecha').value;
+        const fCliente = document.getElementById('f-cliente').value.toUpperCase();
+        
+        const fragmento = document.createDocumentFragment();
+        listaOcultos.innerHTML = '';
 
-            // Header
-            const cabecera = document.createElement('div'); cabecera.className='cliente-header';
-            cabecera.innerHTML = `<div>🧍 ${cliente}</div><div>📅 ${fecha}</div>`;
-            tarjeta.appendChild(cabecera);
+        // Agrupamiento ultra rápido
+        const agrupado = {};
+        for (let i = 0; i < ventasData.length; i++) {
+            const v = ventasData[i];
+            const fV = v.fecha ? v.fecha.split('T')[0] : 'SIN FECHA';
+            
+            if (fFecha && fV !== fFecha) continue;
+            if (fCliente && !v.cliente.toUpperCase().includes(fCliente)) continue;
 
-            // Botón ocultar tarjeta
-            const btnOcultar = document.createElement('button'); btnOcultar.textContent='🙈 Ocultar tarjeta'; btnOcultar.className='boton-ocultar';
-            btnOcultar.onclick = () => { guardarEstadoCliente(claveOculta, { oculto:true }); };
+            const clave = `${v.cliente.toUpperCase()}_${fV}`;
+            if (!agrupado[clave]) agrupado[clave] = { cliente: v.cliente.toUpperCase(), fecha: fV, items: [], clave };
+            agrupado[clave].items.push(v);
+        }
 
-            // Input fecha y botones globales
-            const filaFecha = document.createElement('div');
-            filaFecha.style.display='flex'; filaFecha.style.alignItems='center'; filaFecha.style.gap='10px'; filaFecha.style.marginBottom='10px';
+        const ordenados = Object.values(agrupado).sort((a,b) => a.cliente.localeCompare(b.cliente) || a.fecha.localeCompare(b.fecha));
 
-            const inputFecha = document.createElement('input'); inputFecha.type='date';
-            inputFecha.value = fechaInputs[`${cliente}_${fecha}`] || '';
-            inputFecha.onchange = ()=>{ fechaInputs[`${cliente}_${fecha}`]=inputFecha.value; };
+        let cOcultos = 0;
+        ordenados.forEach(grupo => {
+            if (ocultos.includes(grupo.clave)) {
+                cOcultos++;
+                const b = document.createElement('button');
+                b.className = 'btn-restaurar';
+                b.textContent = `${grupo.cliente} | ${grupo.fecha}`;
+                b.onclick = () => restaurar(grupo.clave);
+                listaOcultos.appendChild(b);
+                return;
+            }
 
-            const btnEnviarTodos = document.createElement('button'); btnEnviarTodos.textContent='Enviar todos'; btnEnviarTodos.className='boton-mini';
-            btnEnviarTodos.style.backgroundColor='#28a745'; btnEnviarTodos.style.color='white';
-            btnEnviarTodos.onclick = ()=>{
-                if(!inputFecha.value) return alert("Selecciona fecha");
-                agrupado[cliente][fecha].forEach(v=>{
-                    const clave = `${cliente}_${fecha}_${v.codigo}`;
-                    guardarEstadoEnvio(clave,{...estadoEnvios[clave],enviado:true,fechaEnvio:inputFecha.value,entregado:false});
-                });
-            };
-
-            const btnEntregarTodos = document.createElement('button'); btnEntregarTodos.textContent='Entregar todos'; btnEntregarTodos.className='boton-mini';
-            btnEntregarTodos.style.backgroundColor='#007bff'; btnEntregarTodos.style.color='white';
-            btnEntregarTodos.onclick = ()=>{
-                if(!inputFecha.value) return alert("Selecciona fecha");
-                agrupado[cliente][fecha].forEach(v=>{
-                    const clave = `${cliente}_${fecha}_${v.codigo}`;
-                    guardarEstadoEnvio(clave,{...estadoEnvios[clave],entregado:true,fechaEntrega:inputFecha.value,enviado:false});
-                });
-            };
-
-            const btnRevertirTodos = document.createElement('button'); btnRevertirTodos.textContent='Revertir todos'; btnRevertirTodos.className='boton-mini';
-            btnRevertirTodos.style.backgroundColor='#ff5722'; btnRevertirTodos.style.color='white';
-            btnRevertirTodos.onclick = ()=>{
-                agrupado[cliente][fecha].forEach(v=>{
-                    const clave = `${cliente}_${fecha}_${v.codigo}`;
-                    window.db.ref('estadoEnvios/'+clave).remove();
-                });
-            };
-
-            filaFecha.appendChild(inputFecha);
-            filaFecha.appendChild(btnEnviarTodos);
-            filaFecha.appendChild(btnEntregarTodos);
-            filaFecha.appendChild(btnRevertirTodos);
-            filaFecha.appendChild(btnOcultar);
-            tarjeta.appendChild(filaFecha);
-
-            // Productos
-            const productosDiv = document.createElement('div'); productosDiv.className='productos-container';
-            agrupado[cliente][fecha].forEach(v=>{
-                const clave = `${cliente}_${fecha}_${v.codigo}`;
-                const estado = estadoEnvios[clave] || {};
-
-                const fila = document.createElement('div'); fila.className='producto';
-                if(estado.enviado) fila.classList.add('enviado');
-                if(estado.entregado) fila.classList.add('entregado');
-                if(estado.embalado) fila.classList.add('embalado');
-
-                const checkbox = document.createElement('input'); checkbox.type='checkbox'; checkbox.checked = estado.embalado || false;
-                checkbox.style.marginRight='8px'; checkbox.style.transform='scale(1.8)';
-                checkbox.onchange = ()=>{ guardarEstadoEnvio(clave,{...estado,embalado:checkbox.checked}); };
-
-                const spanCodigo = document.createElement('span'); spanCodigo.textContent=v.codigo;
-                const spanDesc = document.createElement('span'); spanDesc.textContent=v.producto||v.Producto||v.descripcion||v.Descripción||'(sin descripción)';
-                const spanValor = document.createElement('span'); spanValor.textContent=`$${v.valor}`;
-
-                const btnEnviar = document.createElement('button'); btnEnviar.textContent=estado.enviado?'Enviado':'Enviar'; btnEnviar.className='boton-mini';
-                btnEnviar.style.backgroundColor = estado.enviado?'#28a745':'#ccc'; btnEnviar.style.color='white';
-                btnEnviar.onclick = ()=>{
-                    if(!inputFecha.value) return alert("Selecciona fecha");
-                    guardarEstadoEnvio(clave,{...estado,enviado:!estado.enviado,entregado:false,fechaEnvio:!estado.enviado?inputFecha.value:null});
-                };
-
-                const btnEntregar = document.createElement('button'); btnEntregar.textContent=estado.entregado?'Entregado':'Entregar'; btnEntregar.className='boton-mini';
-                btnEntregar.style.backgroundColor = estado.entregado?'#007bff':'#ccc'; btnEntregar.style.color='white';
-                btnEntregar.onclick = ()=>{
-                    if(!inputFecha.value) return alert("Selecciona fecha");
-                    guardarEstadoEnvio(clave,{...estado,entregado:!estado.entregado,enviado:false,fechaEntrega:!estado.entregado?inputFecha.value:null});
-                };
-
-                fila.appendChild(checkbox); fila.appendChild(spanCodigo); fila.appendChild(spanDesc); fila.appendChild(spanValor);
-                fila.appendChild(btnEnviar); fila.appendChild(btnEntregar);
-
-                if(estado.enviado && estado.fechaEnvio){ const info=document.createElement('div'); info.textContent=`📦 Enviado el ${estado.fechaEnvio}`; info.style.fontSize='0.8em'; fila.appendChild(info);}
-                if(estado.entregado && estado.fechaEntrega){ const info=document.createElement('div'); info.textContent=`🛬 Entregado el ${estado.fechaEntrega}`; info.style.fontSize='0.8em'; fila.appendChild(info);}
-
-                productosDiv.appendChild(fila);
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'cliente-reporte';
+            
+            let htmlItems = '';
+            grupo.items.forEach(item => {
+                const sClase = item.entregado ? 'status-entregado' : (item.enviado ? 'status-enviado' : '');
+                const msg = item.fechaEnvioReal ? `<div class="msg-enviado">✅ ENVIADO: ${item.fechaEnvioReal}</div>` : '';
+                
+                htmlItems += `
+                    <div class="producto-item ${sClase}">
+                        <div class="producto-fila-main">
+                            <span style="flex:1"><b>${item.cantidad}</b> - ${item.producto}</span>
+                            <input type="date" id="cal-${item.firebaseId}" value="${item.fechaEnvioReal || ''}" style="width:115px; font-size:10px;">
+                            <button class="btn btn-enviar" onclick="acc('${item.firebaseId}','env',true)">Enviar</button>
+                            <button class="btn btn-entregar" onclick="acc('${item.firebaseId}','ent',true)">Entregar</button>
+                            <button class="btn btn-revertir" onclick="acc('${item.firebaseId}','rev')">↺</button>
+                        </div>
+                        ${msg}
+                    </div>`;
             });
 
-            tarjeta.appendChild(productosDiv);
-            contenedor.appendChild(tarjeta);
+            tarjeta.innerHTML = `
+                <div class="cliente-header">
+                    <div onclick="ocultar('${grupo.clave}')" style="cursor:pointer" class="cliente-info">
+                        <b>${grupo.cliente}</b><br><small>📅 ${grupo.fecha}</small>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn btn-enviar" onclick="lote('${grupo.clave}','enviado')">📦 Todo</button>
+                        <button class="btn btn-entregar" onclick="lote('${grupo.clave}','entregado')">✅ Todo</button>
+                        <button class="btn btn-revertir" onclick="lote('${grupo.clave}','revertir')">↺</button>
+                        <button class="btn btn-ocultar" onclick="ocultar('${grupo.clave}')">×</button>
+                    </div>
+                </div>${htmlItems}`;
+            fragmento.appendChild(tarjeta);
         });
-    });
 
-    mostrarTarjetasOcultas(agrupado);
-}
+        contenedor.innerHTML = '';
+        contenedor.appendChild(fragmento);
+        document.getElementById('count-ocultos').textContent = cOcultos;
+    }
 
-// ====================
-// TARJETAS OCULTAS
-// ====================
-function mostrarTarjetasOcultas(agrupado){
-    const contenedorOcultas = document.getElementById("tarjetasOcultas");
-    contenedorOcultas.innerHTML = "";
-    Object.keys(agrupado).sort().forEach(cliente=>{
-        Object.keys(agrupado[cliente]).forEach(fecha=>{
-            const claveOculta = `envios_${cliente}_${fecha}`;
-            if(!estadoClientesEnvios[claveOculta]?.oculto) return;
+    // OPERACIONES ATÓMICAS (Más rápidas y seguras para Realtime)
+    function acc(id, tipo, val) {
+        const ref = db.ref(`ventas/${id}`);
+        if(tipo === 'env') {
+            const f = document.getElementById(`cal-${id}`).value;
+            ref.update({ enviado: true, fechaEnvioReal: f || new Date().toISOString().split('T')[0] });
+        } else if(tipo === 'ent') {
+            ref.update({ entregado: true, enviado: true });
+        } else {
+            ref.update({ enviado: false, entregado: false, fechaEnvioReal: null });
+        }
+    }
 
-            const btnMostrar = document.createElement('button');
-            btnMostrar.textContent = `${cliente} (${fecha})`; btnMostrar.style.padding='6px 10px';
-            btnMostrar.style.margin='5px'; btnMostrar.style.border='none'; btnMostrar.style.borderRadius='4px';
-            btnMostrar.style.backgroundColor='#6c757d'; btnMostrar.style.color='white'; btnMostrar.style.cursor='pointer';
-            btnMostrar.onclick = ()=>{ guardarEstadoCliente(claveOculta,{oculto:false}); };
-            contenedorOcultas.appendChild(btnMostrar);
+    function lote(clave, accion) {
+        const [c, f] = clave.split('_');
+        const targets = ventasData.filter(v => v.cliente.toUpperCase() === c && (v.fecha ? v.fecha.split('T')[0] : 'SIN FECHA') === f);
+        const updates = {};
+        targets.forEach(t => {
+            const path = `ventas/${t.firebaseId}/`;
+            if(accion === 'enviado') {
+                updates[path + 'enviado'] = true;
+                if(!t.fechaEnvioReal) updates[path + 'fechaEnvioReal'] = new Date().toISOString().split('T')[0];
+            } else if(accion === 'entregado') {
+                updates[path + 'entregado'] = true;
+                updates[path + 'enviado'] = true;
+            } else {
+                updates[path + 'enviado'] = false;
+                updates[path + 'entregado'] = false;
+                updates[path + 'fechaEnvioReal'] = null;
+            }
         });
-    });
-}
+        db.ref().update(updates);
+    }
 
-// ====================
-// INICIALIZACIÓN
-// ====================
-window.onload = ()=>{
-    mostrarOcultas = localStorage.getItem("mostrarOcultas")==="true";
-    document.getElementById("btnVerOcultas").onclick = ()=>{
-        mostrarOcultas=!mostrarOcultas;
-        localStorage.setItem("mostrarOcultas",mostrarOcultas);
-        document.getElementById("contenedorOcultas").style.display=mostrarOcultas?"block":"none";
-        mostrarEnvios();
+    // GESTIÓN DE INTERFAZ
+    function ocultar(c) { ocultos.push(c); saveOcultos(); }
+    function restaurar(c) { ocultos = ocultos.filter(x => x!==c); saveOcultos(); }
+    function saveOcultos() { 
+        localStorage.setItem('envios_v_sync', JSON.stringify(ocultos)); 
+        mostrarEnvios(); 
+    }
+
+    document.getElementById('f-fecha').onchange = mostrarEnvios;
+    document.getElementById('f-cliente').oninput = mostrarEnvios;
+    document.getElementById('btnVerOcultas').onclick = () => {
+        const box = document.getElementById('contenedorOcultas');
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
     };
-    cargarVentas();
-    cargarEstados();
-};
 </script>
-
 </body>
 </html>
