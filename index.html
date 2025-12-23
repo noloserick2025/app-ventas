@@ -313,6 +313,10 @@
                  placeholder="Nombre del producto"
                  onkeydown="moverFoco(event, 'venta-cantidad')"
                  style="margin-top:8px;">
+ <label>
+            Stock disponible:
+            <span id="stock-disponible" style="font-weight:bold; color:blue;">0</span>
+          </label>
 
           <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
             <input id="venta-cantidad"
@@ -324,10 +328,7 @@
                    onkeydown="moverFoco(event, 'venta-valor')">
           </div>
 
-          <label>
-            Stock disponible:
-            <span id="stock-disponible" style="font-weight:bold; color:blue;">0</span>
-          </label>
+         
 
           <input id="venta-valor"
                  type="number"
