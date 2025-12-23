@@ -7,7 +7,6 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<!-- Firebase Auth (obligatorio para login y logout) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
 <script src="firebase-config.js"></script>
@@ -187,121 +186,223 @@
 #modal-editar *::after {
   content: none !important;
 }
+ @keyframes pulse-green {
+  0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(39, 174, 96, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
+}
 
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+}
+
+.btn-power-active {
+  animation: pulse-green 2s infinite;
+  background-color: #27ae60 !important;
+  color: white !important;
+}
+
+.btn-power-inactive {
+  animation: pulse-red 2s infinite;
+  background-color: #e74c3c !important;
+  color: white !important;
+}
+/* Animación para Modo Offline (Naranja) */
+@keyframes pulse-orange {
+  0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(243, 156, 18, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
+}
+
+.btn-power-offline {
+  animation: pulse-orange 1.5s infinite;
+  background-color: #f39c12 !important; /* Naranja */
+  color: white !important;
+}
+
+/* Las otras clases (active y inactive) se mantienen igual */
   </style>
 </head>
 
 <body>
+<nav style="display: flex; justify-content: space-between; align-items: center; background: #2c3e50; color: white; padding: 10px 25px; height: 60px;">
+    <div class="nav-links" style="display: flex; gap: 20px;">
+        <a href="inventario.html">INVENTARIO</a>
+        <a href="control.html">CONTROL</a>
+        <a href="envios.html">ENVÍOS</a>
+    </div>
 
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <div style="text-align: right; line-height: 1.2;">
+            <div id="reloj-digital" style="font-family: monospace; font-weight: bold; color: #3498db; font-size: 16px;">00:00:00</div>
+            <div id="user-display" style="font-size: 11px; color: #bdc3c7; text-transform: uppercase;">Desconectado</div>
+        </div>
 
-<div id="estado-conexion"
-     style="text-align:center; background:#ffc107; padding:10px; font-weight:bold;">
-    SIN CONEXIÓN – TRABAJANDO OFFLINE
-</div>
-
-
-
-  <nav style="background:#333; padding:14px; color:white;">
-    <a href="index.html"> 🏠 Ventas</a>
-    <a href="inventario.html"> 📦 Inventario</a>
-    <a href="control.html"> 📋 Control </a>
-    <a href="envios.html"> 📋 Envios </a>
-  </nav>
-<button onclick="logout()" style="background:red; color:white;">Salir</button>
+        <button id="btn-logout" onclick="logout()" 
+            style="border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.3s; background: #95a5a6; color: #fff;">
+            ⏻
+        </button>
+    </div>
+</nav>
 
   <iframe id="etiquetaFrame" style="display:none;"></iframe>
 
- <!-- GRID PRINCIPAL : 2 COLUMNAS REALES --> <div class="main-grid" style="margin-top:16px; display:grid; grid-template-columns: 1fr 300px; gap:20px;"> 
-<!-- 🟩 COLUMNA IZQUIERDA (FORMULARIO + TARJETAS) --> 
-<div style="width:100%;"> 
-<div class="formulario" style="width:100%;">
- <div style="width:100%;"> 
-<span id="fechaHoraActual">
-</span>
+  <div class="main-grid" style="margin-top:16px; grid-template-columns: 1fr 300px; gap:20px;">
 
- <label for="fechaManual">Fecha (opcional):</label>
- <input type="date" id="fechaManual" style="max-width:140px; padding:4px 6px; font-size:13px;">
- <!-- BOTÓN GESTIONAR CLIENTES --> <button id="toggle-clientes" style="background:#ff9800; color:white; padding:10px 16px; border:none; border-radius:6px; cursor:pointer; font-size:16px; margin:15px 0 10px 0;"> 
-👥 Gestionar Clientes 
-</button> <!-- ACORDEÓN DE CLIENTES -->
- <div id="contenedor-clientes" style="max-height:0; overflow:hidden; transition:0.5s ease; background:#fff8e1; border:1px solid #ff9800; border-radius:10px; padding:0 20px; margin-bottom:20px;"> 
-<h2>Gestionar Clientes</h2>
- <input id="cliente-nombre" placeholder="Nombre del cliente" onkeyup="this.value=this.value.toUpperCase();" onkeydown="guardarClienteConEnter(event)"> 
-<button onclick="agregarCliente()">Guardar Cliente</button> 
-<select id="cliente-eliminar"> <option value="">Seleccionar cliente</option>
- </select> 
-<button onclick="eliminarCliente()">Eliminar Cliente</button>
- <input id="cliente-nuevo-nombre" placeholder="Nuevo nombre del cliente">
- <button onclick="editarCliente()">Editar Cliente</button>
- </div> <!-- REGISTRAR VENTA -->
- <h2>Registrar Venta</h2>
- <input id="venta-cliente" placeholder="Nombre del cliente" list="clientes" onkeydown="moverFoco(event, 'venta-id')"> 
-<datalist id="clientes"></datalist> 
-<input id="venta-id" placeholder="ID (opcional)" oninput="autocompletarVentaPorId()" onkeydown="moverFocoId(event)" style="max-width:120px;">
- <input id="venta-producto" placeholder="Nombre del producto" onkeydown="moverFoco(event, 'venta-cantidad')" style="width:100%; margin-top:8px;">
- <div style="display:flex; gap:8px; align-items:center; margin-top:8px;"> <input id="venta-cantidad" type="number" min="1" value="1" placeholder="Cant." style="max-width:80px;" onkeydown="moverFoco(event, 'venta-valor')"> 
-</div> 
-<label>Stock disponible: <span id="stock-disponible" style="font-weight:bold; color:blue;">0</span>
- </label>
- <input id="venta-valor" type="number" placeholder="Valor del producto" onkeydown="if(event.key==='Enter'){ registrarVenta(); }"> 
-<button id="guardar-venta" onclick="registrarVenta()">Registrar Venta</button> 
-<!-- TOTAL HOY --> <div id="total-hoy" style="font-size:30px; font-weight:bold; margin-top:20px;"> TOTAL VENDIDO HOY: $0 </div>
- <!-- BOTÓN VER OCULTAS --> <button id="btnVerOcultas" style="padding:6px 8px; font-size:11px; border-radius:4px; margin-top:10px;"> 👁️ VER OCULTAS </button>
- <!-- TARJETAS OCULTAS --> <div id="contenedorOcultas" style="display:none; padding:10px; background:#f8f9fa; border:1px solid #ccc; margin-top:10px;">
- <h3>Tarjetas ocultas</h3> 
-<div id="tarjetasOcultas"></div> </div> </div> </div> 
-<!-- TARJETAS DE VENTA --> <div class="reporte" id="reporte" style="width:100%; margin-top:20px;"></div> 
-<!-- MODAL EDITAR (se deja intacto) --> <div id="modal-editar" class="modal"> <div class="modal-content"> ... </div> </div> </div>
- <!-- 🟦 COLUMNA DERECHA (INVENTARIO FIJO) --> <aside class="panel inventario-panel" style="background:white; padding:15px; border-radius:10px; border:1px solid #ccc; height:fit-content;"> 
-<h2>📦 Inventario</h2> 
-<div id="lista-inventario" style="max-height:70vh; overflow:auto; padding-right:5px;"> </div> 
-<div style="margin-top:12px; font-size:13px; color:#666;"> Última actualización: <span id="inventario-ultima">N/A</span> </div> </aside> </div>
+    <div>
+
+      <div class="formulario">
+
+        <div>
+
+          <span id="fechaActual"></span>
+
+          <label for="fechaManual">Fecha (opcional):</label>
+          <input type="date" id="fechaManual"
+                 style="max-width:140px; padding:4px 6px; font-size:13px;">
+
+          <button id="toggle-clientes"
+                  style="background:#ff9800; color:white; padding:10px 16px;
+                         border:none; border-radius:6px; cursor:pointer;
+                         font-size:16px; margin:15px 0 10px 0;">
+            👥 Gestionar Clientes
+          </button>
+
+          <div id="contenedor-clientes"
+               style="max-height:0; overflow:hidden; transition:0.5s ease;
+                      background:#fff8e1; border:1px solid #ff9800;
+                      border-radius:10px; padding:0 20px; margin-bottom:20px;">
+
+            <h2>Gestionar Clientes</h2>
+
+            <input id="cliente-nombre"
+                   placeholder="Nombre del cliente"
+                   onkeyup="this.value=this.value.toUpperCase();"
+                   onkeydown="guardarClienteConEnter(event)">
+
+            <button onclick="agregarCliente()">Guardar Cliente</button>
+
+            <select id="cliente-eliminar">
+              <option value="">Seleccionar cliente</option>
+            </select>
+
+            <button onclick="eliminarCliente()">Eliminar Cliente</button>
+
+            <input id="cliente-nuevo-nombre" placeholder="Nuevo nombre del cliente">
+            <button onclick="editarCliente()">Editar Cliente</button>
+          </div>
+
+          <h2>Registrar Venta</h2>
+
+          <input id="venta-cliente"
+                 placeholder="Nombre del cliente"
+                 list="clientes"
+                 onkeydown="moverFoco(event, 'venta-id')">
+
+          <datalist id="clientes"></datalist>
+
+          <input id="venta-id"
+                 placeholder="ID (opcional)"
+                 oninput="autocompletarVentaPorId()"
+                 onkeydown="moverFocoId(event)"
+                 style="max-width:120px;">
+
+          <input id="venta-producto"
+                 placeholder="Nombre del producto"
+                 onkeydown="moverFoco(event, 'venta-cantidad')"
+                 style="margin-top:8px;">
+
+          <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+            <input id="venta-cantidad"
+                   type="number"
+                   min="1"
+                   value="1"
+                   placeholder="Cant."
+                   style="max-width:80px;"
+                   onkeydown="moverFoco(event, 'venta-valor')">
+          </div>
+
+          <label>
+            Stock disponible:
+            <span id="stock-disponible" style="font-weight:bold; color:blue;">0</span>
+          </label>
+
+          <input id="venta-valor"
+                 type="number"
+                 placeholder="Valor del producto"
+                 onkeydown="if(event.key==='Enter'){ registrarVenta(); }">
+
+          <button id="guardar-venta" onclick="registrarVenta()">
+            Registrar Venta
+          </button>
+
+          <div id="total-hoy"
+               style="font-size:30px; font-weight:bold; margin-top:20px;">
+            TOTAL VENDIDO HOY: $0
+          </div>
+
+        </div>
+      </div>
+
+      <label for="filtro-fecha" style="font-weight:bold;">
+        📅 Ver ventas del día:
+      </label>
+
+      <input type="date" id="filtro-fecha" style="max-width:160px;">
+
+      <div class="reporte" id="reporte" style="margin-top:20px;"></div>
+
+      <div id="modal-editar" class="modal">
+        <div class="modal-content">
+          ...
+        </div>
+      </div>
+
+    </div>
+
+    <aside class="panel inventario-panel">
+      <h2>📦 Inventario</h2>
+
+      <div id="lista-inventario"
+           style="max-height:70vh; overflow:auto; padding-right:5px;">
+      </div>
+
+      <div style="margin-top:12px; font-size:13px; color:#666;">
+        Última actualización:
+        <span id="inventario-ultima">N/A</span>
+      </div>
+    </aside>
+
+  </div>
+
 
 
 <script>
+firebase.auth().onAuthStateChanged(user => {
+    if (!user) {
+        window.location.href = "login.html";
+    }
+});
+
+// ===============================
+// HELPER: OBTENER FECHA CHILE (YYYY-MM-DD)
+// ===============================
+function getFechaChile() {
+  return new Intl.DateTimeFormat('sv-SE', { 
+    timeZone: 'America/Santiago', 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit' 
+  }).format(new Date());
+}
+
 // ===============================
 // ESTADOS PERSISTENTES
 // ===============================
 window.estadoClientesPrincipal =
   JSON.parse(localStorage.getItem('estadoClientesPrincipal')) || {};
-
-function guardarEstadoTarjetas() {
-  localStorage.setItem(
-    'estadoClientesPrincipal',
-    JSON.stringify(window.estadoClientesPrincipal)
-  );
-}
-
-function resetTarjetas() {
-  if (!confirm('¿Mostrar TODAS las tarjetas ocultas?')) return;
-  window.estadoClientesPrincipal = {};
-  localStorage.removeItem('estadoClientesPrincipal');
-  mostrarVentas();
-}
-
-function crearBotonResetTarjetas() {
-  if (document.getElementById('btnResetTarjetas')) return;
-
-  const btnReset = document.createElement('button');
-  btnReset.id = 'btnResetTarjetas';
-  btnReset.textContent = '🧯 MOSTRAR TODAS LAS TARJETAS';
-
-  Object.assign(btnReset.style, {
-    background: '#dc3545',
-    color: 'white',
-    padding: '8px 12px',
-    border: 'none',
-    borderRadius: '6px',
-    marginBottom: '10px'
-  });
-
-  btnReset.onclick = resetTarjetas;
-
-  const reporte = document.getElementById('reporte');
-  if (reporte && reporte.parentNode) {
-    reporte.parentNode.insertBefore(btnReset, reporte);
-  }
-}
 
 
 function guardarEstadoTarjetas() {
@@ -338,101 +439,125 @@ function claveTarjeta(cliente, fecha) {
 }
 
 
-window.db = firebase.database();
-firebase.auth().onAuthStateChanged(user => {
-    if (!user) {
-        console.warn("No hay sesión activa. Redirigiendo al login...");
-        window.location.href = "login.html";
-        return;
-    }
+if (!firebase.apps.length) {
+    console.error("🔥 Firebase NO inicializado. Revisa firebase-config.js");
+} else {
+    window.db = firebase.database();
+}
 
-    console.log("Usuario autenticado:", user.email);
-
-    // 🔥 Aquí sí puedes cargar tu sistema
-    actualizarDatos();
-    mostrarVentas();
+// Actualizar el nombre del usuario y el reloj en la barra profesional
+// CONTROL DE ESTADO Y COLORES DEL BOTÓN SALIR
+firebase.auth().onAuthStateChanged((user) => {
+    const userDisplay = document.getElementById('user-display');
+    const btnLogout = document.getElementById('btn-logout');
     
+    if (user) {
+        // --- USUARIO LOGUEADO (VERDE) ---
+        if (userDisplay) userDisplay.textContent = user.email.split('@')[0];
+        if (btnLogout) {
+            btnLogout.className = 'btn-power-active';
+            btnLogout.title = "Sistema Conectado - Click para Salir";
+        }
+    } else {
+        // --- USUARIO DESCONECTADO (ROJO) ---
+        if (userDisplay) userDisplay.textContent = "Sin Sesión";
+        if (btnLogout) {
+            btnLogout.className = 'btn-power-inactive';
+            btnLogout.title = "Sistema Desconectado";
+        }
+    }
 });
 
+// Reloj en tiempo real
+setInterval(() => {
+    const el = document.getElementById('reloj-digital');
+    if (el) el.textContent = new Date().toLocaleTimeString('es-CL');
+}, 1000);
 
+// Actualizar visual de conexión
+window.addEventListener('online', () => {
+    document.querySelector('#status-dot span').style.backgroundColor = '#28a745';
+    document.getElementById('status-text').textContent = 'Sistema En Línea';
+});
+window.addEventListener('offline', () => {
+    document.querySelector('#status-dot span').style.backgroundColor = '#dc3545';
+    document.getElementById('status-text').textContent = 'Modo Offline';
+});
+
+function actualizarIndicadorEstado() {
+    const user = firebase.auth().currentUser;
+    const btnLogout = document.getElementById('btn-logout');
+    const userDisplay = document.getElementById('user-display');
+    const isOnline = navigator.onLine;
+
+    if (user) {
+        if (isOnline) {
+            // Caso 1: Conectado y Online (VERDE)
+            btnLogout.className = 'btn-power-active';
+            userDisplay.innerHTML = `<span style="color:#27ae60">●</span> ${user.email.split('@')[0].toUpperCase()}`;
+            btnLogout.title = "Sincronizado con la nube";
+        } else {
+            // Caso 2: Conectado pero Offline (NARANJA)
+            btnLogout.className = 'btn-power-offline';
+            userDisplay.innerHTML = `<span style="color:#f39c12">●</span> MODO OFFLINE`;
+            btnLogout.title = "Trabajando sin internet (Cambios guardados localmente)";
+        }
+    } else {
+        // Caso 3: Desconectado (ROJO)
+        btnLogout.className = 'btn-power-inactive';
+        userDisplay.textContent = "SIN SESIÓN";
+        btnLogout.title = "Inicie sesión para trabajar";
+    }
+}
+
+// Escuchar cambios de Firebase
+firebase.auth().onAuthStateChanged(actualizarIndicadorEstado);
+
+// Escuchar cambios de Internet
+window.addEventListener('online', actualizarIndicadorEstado);
+window.addEventListener('offline', actualizarIndicadorEstado);
 
 // ===============================
 // 🔥 LISTENERS EN TIEMPO REAL
 // ===============================
  let ventaEditandoUUID = null;
-// INVENTARIO EN TIEMPO REAL
-if (window.db) {
+
+
+firebase.auth().onAuthStateChanged(user => {
+    if (!user || !window.db) return;
+
+    // CLIENTES
+    window.db.ref("clientes").on("value", snap => {
+        const data = snap.val() || {};
+        window.clientes = Object.values(data);
+        localStorage.setItem("clientes", JSON.stringify(window.clientes));
+        actualizarDatalist();
+    });
+
+    // VENTAS
+  window.db.ref("ventas").on("value", snap => {
+  const data = snap.val() || {};
+
+  window.ventas = Object.keys(data).map(id => ({
+    ...data[id],
+    firebaseId: id,
+    uuid: id,
+    embalado: !!data[id].embalado // 🔥 IMPORTANTE
+  }));
+
+  localStorage.setItem("ventas", JSON.stringify(window.ventas));
+  mostrarVentas();
+});
+
+
+    // INVENTARIO
     window.db.ref("inventario").on("value", snap => {
         const data = snap.val() || {};
-
-        window.inventario = Object.keys(data).map(id => ({
-            ...data[id],
-            firebaseId: id
-        }));
-
+        window.inventario = Object.values(data);
         localStorage.setItem("inventario", JSON.stringify(window.inventario));
-        if (typeof renderUI === "function") renderInventarioUI();
+        renderInventarioUI();
     });
-}
-
-// VENTAS EN TIEMPO REAL
-if (window.db) {
-    console.log("🔄 Listener de ventas ACTIVADO");
-
-    window.db.ref("ventas").on("value", snap => {
-        const data = snap.val() || {};
-
-        const nuevas = Object.keys(data).map(id => ({
-            ...data[id],
-            firebaseId: id,
-            uuid: id
-        }));
-
-        if (JSON.stringify(window.ventas) !== JSON.stringify(nuevas)) {
-            console.log("📡 Cambios detectados → actualizando interfaz");
-            window.ventas = nuevas;
-            localStorage.setItem("ventas", JSON.stringify(window.ventas));
-            if (typeof mostrarVentas === "function") mostrarVentas();
-        }
-    });
-}
-
-// AÑADIR SOLO NUEVAS VENTAS SIN DUPLICAR
-//if (window.db) {
-//    window.db.ref("ventas").on("child_added", snap => {
-  //      const data = snap.val();
-    //    const id = snap.key;
-
-//        if (window.ventas.some(v => v.firebaseId === id)) return;
-
-//        const venta = {
-//            uuid: data.uuid || id,      // 🔑 CLAVE
-//            firebaseId: id,
-//            cliente: data.cliente,
-//            producto: data.producto,
-//            codigo: data.codigo,
-//            valor: Number(data.valor),
-//            cantidad: Number(data.cantidad),
-//            fecha: data.fecha,
-//            estado: data.estado || "Pendiente",
-//            idInventario: data.idInventario || null,
-//            embalado: !!data.embalado,
-//            timestamp: data.timestamp || Date.now()
-//        };
-
-//        window.ventas.push(venta);
-//        localStorage.setItem("ventas", JSON.stringify(window.ventas));
-//        if (typeof mostrarVentas === "function") mostrarVentas();
-//    });
-//}
-
-// TARJETAS OCULTAS EN TIEMPO REAL
-if (window.db) {
-    window.db.ref("estadoTarjetas").on("value", snap => {
-        window.estadoClientesPrincipal = snap.val() || {};
-        if (typeof mostrarVentas === "function") mostrarVentas();
-    });
-}
+});
 
 // ===============================
 // 🔥 INICIALIZACIÓN
@@ -485,7 +610,7 @@ function descargarVentas() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `respaldo_ventas_${new Date().toLocaleDateString('sv-SE')}.json`;
+  a.download = `respaldo_ventas_${getFechaChile()}.json`;
   a.click();
 
   URL.revokeObjectURL(url);
@@ -535,33 +660,7 @@ let productoAEditar = null;
 // ===============================
  
 
-async function ocultarTarjetaEnFirebase(cliente, fecha) {
-    if (!window.db) return;
 
-    try {
-        await window.db.ref("estadoTarjetas")
-            .child(`principal_${cliente}_${fecha}`)
-            .set({ oculto: true });
-    } catch (err) {
-        console.error("Error ocultando tarjeta:", err);
-    }
-}
-
-async function mostrarTarjetaEnFirebase(cliente, fecha) {
-    if (!window.db) return;
-
-    try {
-        await window.db.ref("estadoTarjetas")
-            .child(`principal_${cliente}_${fecha}`)
-            .remove();
-    } catch (err) {
-        console.error("Error mostrando tarjeta:", err);
-    }
-}
-
-// ===============================
-// 🔥 GUARDADO LOCAL
-// ===============================
 
 function guardarDatosLocal() {
     try {
@@ -575,14 +674,15 @@ function guardarDatosLocal() {
 }
 
 // ===============================
-// 🔥 FECHA/HORA
+// 🔥 FECHA/HORA (AJUSTADO A CHILE CENTRAL)
 // ===============================
 
 function actualizarFechaHora() {
     const ahora = new Date();
     const opciones = {
         year:'numeric', month:'2-digit', day:'2-digit',
-        hour:'2-digit', minute:'2-digit', second:'2-digit'
+        hour:'2-digit', minute:'2-digit', second:'2-digit',
+        timeZone: 'America/Santiago'
     };
     document.getElementById('fechaHoraActual').textContent =
         ahora.toLocaleString('es-CL', opciones).replace(',', '');
@@ -606,6 +706,9 @@ function obtenerCodigoCorrelativo() {
 // 🔥 DATALIST CLIENTES
 // ===============================
 
+// ===============================================
+// 🔥 FUNCIÓN ACTUALIZAR DATALIST (REPARADA)
+// ===============================================
 function actualizarDatalist() {
     const datalist = document.getElementById('clientes');
     const selectEliminar = document.getElementById('cliente-eliminar');
@@ -615,17 +718,26 @@ function actualizarDatalist() {
         selectEliminar.innerHTML = '<option value="">Seleccionar cliente</option>';
     }
 
-    window.clientes.sort().forEach(c => {
-        if (datalist) {
-            const o = document.createElement("option");
-            o.value = c;
-            datalist.appendChild(o);
-        }
-        if (selectEliminar) {
-            const o = document.createElement("option");
-            o.value = c;
-            o.textContent = c;
-            selectEliminar.appendChild(o);
+    if (!window.clientes) return;
+
+    // Ordenar alfabéticamente para que sea fácil buscar
+    const clientesOrdenados = [...window.clientes].sort((a, b) => a.localeCompare(b));
+
+    clientesOrdenados.forEach(c => {
+        if (c) {
+            // Llenar el datalist para el input de ventas
+            if (datalist) {
+                const o = document.createElement("option");
+                o.value = c;
+                datalist.appendChild(o);
+            }
+            // Llenar el select para el panel de gestión
+            if (selectEliminar) {
+                const o = document.createElement("option");
+                o.value = c;
+                o.textContent = c;
+                selectEliminar.appendChild(o);
+            }
         }
     });
 }
@@ -650,24 +762,27 @@ let ventasArray = [];
 if (snapshot.exists()) {
     const ventasObj = snapshot.val();
 
-    ventasArray = Object.keys(ventasObj).map(key => {
-        const v = ventasObj[key];
+  // ... dentro de actualizarDatos, reemplaza el mapeo de ventasArray:
 
-        return {
-            uuid: key,                // ID local
-            firebaseId: key,          // ID en Firebase
-            cliente: v.cliente || "",
-            producto: v.producto || "",
-            valor: Number(v.valor) || 0,
-            cantidad: Number(v.cantidad) || 1,
-            fecha: v.fecha || "",
-            estado: v.estado || "Pendiente",
-            codigo: v.codigo || "",
-            idInventario: v.idInventario || null,
-            timestamp: Number(v.timestamp) || Date.now(),
-            embalado: !!v.embalado
-        };
-    });
+ventasArray = Object.keys(ventasObj).map(key => {
+    const v = ventasObj[key];
+
+    return {
+        uuid: key,                // ID local
+        firebaseId: key,          // ID en Firebase
+        cliente: v.cliente || "",
+        producto: v.producto || "",
+        valor: Number(v.valor) || 0,
+        cantidad: Number(v.cantidad) || 1,
+        fecha: v.fecha || "",
+        estado: v.estado || "Pendiente",
+        codigo: v.codigo || "",
+        correlativo: v.correlativo || "--", // ✅ ESTA LÍNEA CORRIGE EL PROBLEMA
+        idInventario: v.idInventario || null,
+        timestamp: Number(v.timestamp) || Date.now(),
+        embalado: !!v.embalado
+    };
+});
 }
 
 
@@ -907,62 +1022,85 @@ function sincronizarVentasFirebase() {
 
 
 
-function registrarVenta() {
-  const cliente = document.getElementById("venta-cliente").value.trim();
-  const producto = document.getElementById("venta-producto").value.trim();
+async function registrarVenta() {
+  const cliente = document.getElementById("venta-cliente").value.trim().toUpperCase();
+  const idInventario = document.getElementById("venta-id").value.trim().toUpperCase();
+  const producto = document.getElementById("venta-producto").value.trim().toUpperCase();
   const cantidad = parseInt(document.getElementById("venta-cantidad").value) || 1;
-  const valorUnitario = parseFloat(document.getElementById("venta-valor").value) || 0;
+  const valorTotal = parseFloat(document.getElementById("venta-valor").value) || 0;
 
-  if (!cliente || !producto || valorUnitario <= 0) {
+  if (!cliente || !producto || valorTotal <= 0) {
     alert("Completa cliente, producto y valor.");
     return;
   }
 
-  // ✅ FECHA REAL DE LA VENTA
-  const inputFecha = document.getElementById('venta-fecha');
-  const fecha = inputFecha && inputFecha.value
-    ? inputFecha.value
-    : new Date().toISOString().split('T')[0];
+  // 🔴 1. VALIDACIÓN DE STOCK DISPONIBLE
+  if (idInventario) {
+    const itemInv = window.inventario.find(p => p.codigo === idInventario);
+    if (itemInv) {
+      if (cantidad > itemInv.cantidad) {
+        alert(`❌ Cantidad insuficiente. Stock disponible: ${itemInv.cantidad}`);
+        return; 
+      }
+    }
+  }
 
-  // 🔢 Correlativo
+  const fecha = document.getElementById('fechaManual')?.value || getFechaChile();
+
+  // 🔢 2. CORRELATIVO (Se calcula antes de guardar)
   let correlativo = parseInt(localStorage.getItem("correlativo_actual") || "0") + 1;
   if (correlativo > 99) correlativo = 1;
   const correlativoTxt = correlativo.toString().padStart(2, "0");
   localStorage.setItem("correlativo_actual", correlativo);
 
   const nuevaVenta = {
-    uuid: crypto.randomUUID(),
     correlativo: correlativoTxt,
     cliente,
     producto,
     cantidad,
-    valor: valorUnitario,
-    fecha,              // 🔥 AQUÍ QUEDA FIJA
+    valor: valorTotal,
+    fecha,
+    idInventario: idInventario || null,
     embalado: false,
-    firebaseId: null,
-    pendiente: !navigator.onLine
+    timestamp: Date.now()
   };
 
-  window.ventas.push(nuevaVenta);
-  guardarDatosLocal();
+  // 💾 3. GUARDADO ÚNICO EN FIREBASE (Y DESCUENTO DE STOCK)
+  if (navigator.onLine && window.db) {
+    try {
+      // Registrar la venta
+      const refVenta = window.db.ref("ventas").push();
+      await refVenta.set(nuevaVenta);
 
-  if (navigator.onLine) {
-    const ref = db.ref("ventas").push();
-    nuevaVenta.firebaseId = ref.key;
-    ref.set(nuevaVenta);
+      // Descontar del inventario en Firebase si hay ID
+      if (idInventario) {
+        const refInv = window.db.ref("inventario");
+        const snap = await refInv.orderByChild("codigo").equalTo(idInventario).once("value");
+        if (snap.exists()) {
+          const keyInFirebase = Object.keys(snap.val())[0];
+          await refInv.child(keyInFirebase).child("cantidad").transaction((actual) => {
+            return (actual || 0) - cantidad;
+          });
+        }
+      }
+      console.log("Venta e inventario sincronizados");
+    } catch (e) {
+      console.error("Error al sincronizar:", e);
+    }
+  } else {
+    // Si estás offline, lo guarda local para subirlo luego
+    window.ventas.push({ ...nuevaVenta, uuid: crypto.randomUUID(), pendiente: true });
     guardarDatosLocal();
   }
 
+  // 🖨️ 4. ACCIONES FINALES
   imprimirEtiquetaVenta(cliente, correlativoTxt, fecha);
-
-  document.getElementById("venta-producto").value = '';
-  document.getElementById("venta-cantidad").value = 1;
-  document.getElementById("venta-valor").value = '';
-  document.getElementById("venta-producto").focus();
-
-  mostrarVentas();
+  limpiarCamposDespuesVenta();
+  
+  // No necesitamos llamar a mostrarVentas() manualmente aquí porque 
+  // el listener 'on("value")' de tu código ya lo hará al detectar el cambio en Firebase.
+renderInventarioUI(); 
 }
-
 
 
 
@@ -970,11 +1108,17 @@ function registrarVenta() {
 function mostrarVentas() {
 
   const reporte = document.getElementById('reporte');
-  const contenedorOcultas = document.getElementById('tarjetasOcultas');
   reporte.innerHTML = '';
-  contenedorOcultas.innerHTML = '';
 
-  const filtro = document.getElementById('filtro-fecha')?.value;
+  const inputFecha = document.getElementById('filtro-fecha');
+  const hoyChile = getFechaChile();
+
+  // 👉 si el input está vacío, usar HOY CHILE y mostrarlo
+  if (inputFecha && !inputFecha.value) {
+    inputFecha.value = hoyChile;
+  }
+
+  const filtro = inputFecha?.value || hoyChile;
   const agrupado = {};
 
   // ========= AGRUPAR =========
@@ -989,7 +1133,6 @@ function mostrarVentas() {
     agrupado[fecha][cliente].push(v);
   });
 
-  const hoy = new Date().toISOString().split('T')[0];
   let totalHoy = 0;
 
   Object.keys(agrupado).sort().forEach(fecha => {
@@ -1001,13 +1144,6 @@ function mostrarVentas() {
     reporte.appendChild(titulo);
 
     for (const cliente in agrupado[fecha]) {
-
-      const clave = claveTarjeta(cliente, fecha);
-      if (window.estadoClientesPrincipal[clave]?.oculto) {
-        const html = crearBotonMostrarTarjeta(cliente, fecha, true);
-        if (html) contenedorOcultas.insertAdjacentHTML('beforeend', html);
-        continue;
-      }
 
       const tarjeta = document.createElement('div');
       tarjeta.className = 'cliente-reporte';
@@ -1026,86 +1162,88 @@ function mostrarVentas() {
       header.append(nombre, fechaDiv);
       tarjeta.appendChild(header);
 
-      // ===== BOTÓN OCULTAR =====
-      const btnOcultar = document.createElement('button');
-      btnOcultar.textContent = 'Ocultar tarjeta';
-      btnOcultar.onclick = () => {
-        window.estadoClientesPrincipal[clave] = { oculto: true };
-        guardarEstadoTarjetas();
-        mostrarVentas();
-      };
-      tarjeta.appendChild(btnOcultar);
-
       let totalCliente = 0;
 
       // ===== PRODUCTOS =====
-agrupado[fecha][cliente].forEach(v => {
+      agrupado[fecha][cliente].forEach(v => {
 
-  const fila = document.createElement('div');
-  fila.className = 'producto';
-  if (v.embalado) fila.classList.add('embalado');
+        const fila = document.createElement('div');
+        fila.className = 'producto';
+        if (v.embalado) fila.classList.add('embalado');
 
-  const nombreProducto =
-    v.producto || v.descripcion || v.detalle || '(Producto antiguo)';
+        const nombreProducto =
+          v.producto || v.descripcion || v.detalle || '(Producto antiguo)';
 
-  const correlativo = v.correlativo || '--';
+        const correlativo = v.correlativo || '--';
 
-  const chk = document.createElement('input');
-  chk.type = 'checkbox';
-  chk.checked = !!v.embalado;
-  chk.onclick = () => {
-    v.embalado = chk.checked;
-    fila.classList.toggle('embalado', chk.checked);
-    guardarDatosLocal();
-  };
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.style.transform = 'scale(1.8)';
+        chk.style.marginRight = '35px';
+        chk.checked = !!v.embalado;
+        chk.onchange = async () => {
+  const nuevoEstado = chk.checked;
 
-  const spanCorr = document.createElement('span');
-  spanCorr.textContent = correlativo;
+  // 1️⃣ Actualizar visual inmediato
+  fila.classList.toggle('embalado', nuevoEstado);
 
-  const spanProd = document.createElement('span');
-  spanProd.textContent =
-    nombreProducto + (v.cantidad > 1 ? ` x${v.cantidad}` : '');
+  // 2️⃣ Actualizar objeto local
+  v.embalado = nuevoEstado;
+  guardarDatosLocal();
 
-  const spanVal = document.createElement('strong');
-  spanVal.textContent = `$${v.valor || 0}`;
-
-  // ===== BOTONES EDITAR / ELIMINAR =====
-  const accionesProd = document.createElement('div');
-  accionesProd.style.display = 'flex';
-  accionesProd.style.gap = '6px';
-
-  const btnEditar = document.createElement('button');
-  btnEditar.textContent = 'Editar';
-  btnEditar.onclick = () =>
-    abrirModalEditar(v.uuid || v.firebaseId);
-
-  const btnEliminar = document.createElement('button');
-  btnEliminar.textContent = 'Eliminar';
-  btnEliminar.onclick = () =>
-    eliminarProducto(v);
-
-  accionesProd.append(btnEditar, btnEliminar);
-
-  fila.append(chk, spanCorr, spanProd, spanVal, accionesProd);
-  tarjeta.appendChild(fila);
-
-  totalCliente += Number(v.valor || 0);
-  if (fecha === hoy) totalHoy += Number(v.valor || 0);
-});
+  // 3️⃣ Guardar en Firebase (CLAVE)
+  if (window.db && v.firebaseId) {
+    try {
+      await window.db
+        .ref("ventas")
+        .child(v.firebaseId)
+        .update({ embalado: nuevoEstado });
+    } catch (e) {
+      console.error("Error guardando embalaje:", e);
+    }
+  }
+};
 
 
-      // ===== TOTAL =====
+        const spanCorr = document.createElement('span');
+        spanCorr.textContent = correlativo;
+
+        const spanProd = document.createElement('span');
+        spanProd.textContent =
+          nombreProducto + (v.cantidad > 1 ? ` x${v.cantidad}` : '');
+
+        const spanVal = document.createElement('strong');
+        spanVal.textContent = `$${v.valor || 0}`;
+
+        const accionesProd = document.createElement('div');
+        accionesProd.style.display = 'flex';
+        accionesProd.style.gap = '6px';
+
+        const btnEditar = document.createElement('button');
+        btnEditar.textContent = 'Editar';
+        btnEditar.onclick = () =>
+          abrirModalEditar(v.uuid || v.firebaseId);
+
+        const btnEliminar = document.createElement('button');
+        btnEliminar.textContent = 'Eliminar';
+        btnEliminar.onclick = () =>
+          eliminarProducto(v);
+
+        accionesProd.append(btnEditar, btnEliminar);
+
+        fila.append(chk, spanCorr, spanProd, spanVal, accionesProd);
+        tarjeta.appendChild(fila);
+
+        totalCliente += Number(v.valor || 0);
+        if (fecha === hoyChile) totalHoy += Number(v.valor || 0);
+      });
+
+      // ===== TOTAL CLIENTE =====
       const total = document.createElement('div');
       total.innerHTML = `<strong>Total Cliente: $${totalCliente}</strong>`;
       tarjeta.appendChild(total);
 
-      // ===== BOTONES GRANDES (ACCIONES DIRECTAS) =====
-      const acciones = document.createElement('div');
-      acciones.style.display = 'flex';
-      acciones.style.gap = '10px';
-      acciones.style.marginTop = '10px';
-
-      // --- WHATSAPP ---
+      // ===== BOTÓN WHATSAPP =====
       const btnWsp = document.createElement('button');
       btnWsp.textContent = 'ENVIAR POR WHATSAPP';
       btnWsp.style.background = '#22c55e';
@@ -1115,7 +1253,7 @@ agrupado[fecha][cliente].forEach(v => {
           v => v.cliente === cliente && v.fecha.startsWith(fecha)
         );
 
-        let mensaje = `Venta de ${cliente} (${fecha})\n\n`;
+        let mensaje = `Hola ${cliente}, Menajes Vasaya agradece tu preferencia, se adjunta detalle y el total a pagar, venta del (${fecha})\n\n`;
         let total = 0;
 
         ventasCliente.forEach(v => {
@@ -1131,29 +1269,7 @@ agrupado[fecha][cliente].forEach(v => {
         );
       };
 
-      // --- ELIMINAR TARJETA ---
-      const btnEliminar = document.createElement('button');
-      btnEliminar.textContent = 'ELIMINAR TARJETA';
-      btnEliminar.style.background = '#ef4444';
-      btnEliminar.onclick = () => {
-
-        const ok = confirm(
-          `¿Estás seguro de borrar la tarjeta de venta de "${cliente}"?`
-        );
-
-        if (!ok) return;
-
-        window.ventas = window.ventas.filter(
-          v => !(v.cliente === cliente && v.fecha.startsWith(fecha))
-        );
-
-        guardarDatosLocal();
-        mostrarVentas();
-      };
-
-      acciones.append(btnWsp, btnEliminar);
-      tarjeta.appendChild(acciones);
-
+      tarjeta.appendChild(btnWsp);
       reporte.appendChild(tarjeta);
     }
   });
@@ -1161,9 +1277,6 @@ agrupado[fecha][cliente].forEach(v => {
   document.getElementById('total-hoy').textContent =
     `TOTAL VENDIDO HOY: $${totalHoy}`;
 }
-
-
-
 
 function imprimirEtiquetaVenta(cliente, correlativo, fecha) {
     const frame = document.getElementById('etiquetaFrame');
@@ -1182,9 +1295,9 @@ function imprimirEtiquetaVenta(cliente, correlativo, fecha) {
                     padding: 10px;
                     box-sizing: border-box;
                 }
-                .cliente-nombre { font-size: 12px; font-weight: bold; margin: 5px 0; }
+                .cliente-nombre { font-size: 10px; font-weight: bold; margin: 5px 0; }
                 .correlativo-codigo { font-size: 14px; font-weight: bolder; margin: 0; color: red; }
-                .fecha-dato { font-size: 12px; margin-top: 5px; }
+                .fecha-dato { font-size: 10px; margin-top: 5px; }
 
                 @media print {
                     body { visibility: hidden; }
@@ -1228,40 +1341,6 @@ function limpiarCamposDespuesVenta() {
     document.getElementById('stock-disponible').textContent = 0;
 }
 
-function crearBotonMostrarTarjeta(cliente, fecha, esOculta) {
-    const clave = `principal_${cliente}_${fecha}`;
-
-    return `
-        <div class="tarjeta-oculta">
-            <span>${cliente} (${fecha})</span>
-            <button onclick="mostrarTarjetaEnFirebase('${cliente}', '${fecha}')">
-                Mostrar tarjeta
-            </button>
-        </div>
-    `;
-}
-
-
-
-
-function restaurarTarjeta(cliente, fecha) {
-    const estadoLocalKey = `principal_${cliente}_${fecha}`;
-    window.estadoClientesPrincipal[estadoLocalKey] = { oculto: false };
-    guardarDatosLocal();
-    mostrarVentas(); // aquí sí está correcto
-}
-
-document.getElementById('btnVerOcultas').onclick = function() {
-    const contenedor = document.getElementById('contenedorOcultas');
-    if (contenedor.style.display === 'none' || contenedor.style.display === '') {
-        contenedor.style.display = 'block';
-        this.textContent = '🙈 OCULTAR LISTA';
-    } else {
-        contenedor.style.display = 'none';
-        this.textContent = '👁️ VER OCULTAS';
-    }
-};
-
 function abrirModalEditar(uuid) {
     const v = window.ventas.find(x => x.uuid === uuid || x.firebaseId === uuid);
     if (!v) {
@@ -1269,67 +1348,103 @@ function abrirModalEditar(uuid) {
         return;
     }
 
-    // 🔥 ELIMINAR CUALQUIER MODAL ANTERIOR
+    // Eliminar modal anterior si existe
     const viejo = document.getElementById("modal-editar-dinamico");
     if (viejo) viejo.remove();
 
-    // 🔥 CREAR MODAL DESDE CERO
+    // Crear el fondo del modal
     const modal = document.createElement("div");
     modal.id = "modal-editar-dinamico";
     modal.style.cssText = `
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999999;
+        position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+        display: flex; align-items: center; justify-content: center; z-index: 9999999;
     `;
 
     modal.innerHTML = `
-        <div style="
-            background: white;
-            padding: 20px;
-            width: 360px;
-            border-radius: 10px;
-            font-family: Arial;
-            color: black;
-        ">
-            <h3>Editar Producto</h3>
-
-            <input id="edit-prod" value="${v.producto || ''}" style="width:100%;margin-bottom:8px;">
-            <input id="edit-val" type="number" value="${v.valor || 0}" style="width:100%;margin-bottom:8px;">
-            <input id="edit-cant" type="number" min="1" value="${v.cantidad || 1}" style="width:100%;margin-bottom:12px;">
-
-            <button id="btnGuardar">Guardar</button>
-            <button id="btnCerrar">Cerrar</button>
+        <div style="background: white; padding: 25px; width: 340px; border-radius: 12px; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+            <h3 style="margin-top:0; color: #333;">Editar Línea de Venta</h3>
+            
+            <label style="display:block; font-size:12px; color:#666;">Descripción del Producto:</label>
+            <input type="text" id="edit-prod" value="${v.producto || ''}" 
+                style="width:100%; padding:8px; margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; text-transform:uppercase;">
+            
+            <label style="display:block; font-size:12px; color:#666;">Cantidad:</label>
+            <div style="display:flex; align-items:center; margin-bottom:15px;">
+                <input type="number" id="edit-cant" value="${v.cantidad || 1}" 
+                    style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                <span style="margin-left:8px; font-weight:bold;">u.</span>
+            </div>
+            
+            <label style="display:block; font-size:12px; color:#666;">Valor Total:</label>
+            <div style="display:flex; align-items:center; margin-bottom:20px;">
+                <span style="margin-right:8px; font-weight:bold;">$</span>
+                <input type="number" id="edit-val" value="${v.valor || 0}" 
+                    style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+            </div>
+            
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button id="btnCerrar" style="padding:10px 15px; border:none; background:#eee; border-radius:4px; cursor:pointer;">Cancelar</button>
+                <button id="btnGuardar" style="padding:10px 15px; border:none; background:#007bff; color:white; border-radius:4px; cursor:pointer; font-weight:bold;">Guardar Cambios</button>
+            </div>
         </div>
     `;
 
     document.body.appendChild(modal);
 
+    // Foco automático en cantidad para mayor rapidez
+    setTimeout(() => document.getElementById("edit-cant").select(), 100);
+
+    // Acción de Cerrar
     document.getElementById("btnCerrar").onclick = () => modal.remove();
 
+    // Acción de Guardar
     document.getElementById("btnGuardar").onclick = async () => {
-        v.producto = document.getElementById("edit-prod").value.toUpperCase();
-        v.valor = parseFloat(document.getElementById("edit-val").value);
-        v.cantidad = parseInt(document.getElementById("edit-cant").value);
+        const nuevoProd = document.getElementById("edit-prod").value.toUpperCase();
+        const nuevaCant = parseInt(document.getElementById("edit-cant").value) || 0;
+        const nuevoVal = parseFloat(document.getElementById("edit-val").value) || 0;
 
-        if (window.db && v.firebaseId) {
-            const data = { ...v };
-            delete data.uuid;
-            delete data.firebaseId;
-            await window.db.ref("ventas").child(v.firebaseId).set(data);
+        // 🟢 Lógica de Inventario (Calcular diferencia)
+        const diferencia = (v.cantidad || 0) - nuevaCant;
+
+        if (v.idInventario) {
+            const itemInv = window.inventario.find(p => p.codigo === v.idInventario);
+            if (itemInv) {
+                itemInv.cantidad += diferencia; // Actualización local
+                
+                if (window.db) {
+                    const refInv = window.db.ref("inventario");
+                    const snap = await refInv.orderByChild("codigo").equalTo(v.idInventario).once("value");
+                    if (snap.exists()) {
+                        const key = Object.keys(snap.val())[0];
+                        await refInv.child(key).update({ cantidad: itemInv.cantidad });
+                    }
+                }
+            }
         }
 
+        // 🔵 Actualizar Objeto Venta
+        v.producto = nuevoProd;
+        v.cantidad = nuevaCant;
+        v.valor = nuevoVal;
+
+        // Guardar en Firebase
+        if (window.db && v.firebaseId) {
+            await window.db.ref("ventas").child(v.firebaseId).update({
+                producto: v.producto,
+                cantidad: v.cantidad,
+                valor: v.valor
+            });
+        }
+
+        // Refrescar todo
         guardarDatosLocal();
-        mostrarVentas();
+        mostrarVentas();      // Refresca la tabla de ventas
+        renderInventarioUI(); // Refresca la ventana lateral derecha
+        if (typeof renderInventarioTabla === 'function') renderInventarioTabla(); // Refresca hoja inventario
+        
         modal.remove();
     };
 }
-
-
-
 
 function cerrarModalEditar() {
     document.getElementById("modal-editar").style.display = "none";
@@ -1338,168 +1453,130 @@ function cerrarModalEditar() {
 
   
 
-  async function guardarEdicion() {
-    if (!productoAEditar) return;
-    
-    const nuevoProducto = document.getElementById('editar-producto').value.toUpperCase();
-    const nuevoValor = parseFloat(document.getElementById('editar-valor').value);
-    const nuevaCantidad = parseInt(document.getElementById('editar-cantidad').value);
+ async function guardarEdicion() {
+    const id = document.getElementById('editar-uuid').value;
+    const nuevoNombre = document.getElementById('editar-producto').value.trim().toUpperCase();
+    const nuevaCant = parseInt(document.getElementById('editar-cantidad').value) || 0;
+    const nuevoValor = parseFloat(document.getElementById('editar-valor').value) || 0;
 
-    // Guarda los valores anteriores para el ajuste de inventario
-    const cantidadAnterior = productoAEditar.cantidad;
-    const diferencia = nuevaCantidad - cantidadAnterior;
+    const vIndex = window.ventas.findIndex(v => v.uuid === id || v.firebaseId === id);
+    if (vIndex === -1) return;
 
-    // 1. Actualización de datos en el objeto
-    productoAEditar.producto = nuevoProducto;
-    productoAEditar.valor = nuevoValor;
-    productoAEditar.cantidad = nuevaCantidad;
+    const ventaAntigua = window.ventas[vIndex];
+    // Diferencia: lo que había menos lo nuevo. Ej: 3 - 2 = +1 (devuelve 1 al stock)
+    const diferencia = (parseInt(ventaAntigua.cantidad) || 0) - nuevaCant;
 
-    // 2. Ajuste de Inventario si es necesario
-    const idInv = productoAEditar.idInventario;
-    if (idInv) {
-      if (window.db && navigator.onLine) {
-        try {
-          const ref = window.db.ref('inventario').child(idInv).child('cantidad');
-          await ref.transaction(actual => {
-            if (actual === null) return 0;
-            let nuevoStock = parseInt(actual || 0) - diferencia; // Diferencia ya es (+/-)
-            if (nuevoStock < 0) {
-              alert(`Stock insuficiente para el cambio. Stock actual: ${actual}`);
-              throw new Error('Stock insuficiente');
+    try {
+        // 1. Actualizar Inventario si tiene código
+        if (ventaAntigua.idInventario) {
+            const itemInv = window.inventario.find(p => p.codigo === ventaAntigua.idInventario);
+            if (itemInv) {
+                itemInv.cantidad += diferencia;
+                
+                if (window.db) {
+                    const refInv = window.db.ref("inventario");
+                    const snap = await refInv.orderByChild("codigo").equalTo(ventaAntigua.idInventario).once("value");
+                    if (snap.exists()) {
+                        const key = Object.keys(snap.val())[0];
+                        await refInv.child(key).update({ cantidad: itemInv.cantidad });
+                    }
+                }
             }
-            return nuevoStock;
-          });
-        } catch(err) {
-          console.error('Error ajustando inventario en Firebase:', err);
-          productoAEditar.cantidad = cantidadAnterior; // Revertir la edición local en caso de fallo sobre stock
-          alert('No se pudo ajustar el inventario. Cambios revertidos.');
-          cerrarModalEditar();
-          return;
         }
-      } else {
-        // offline: ajustar local
-        const idx = window.inventario.findIndex(p => String(p.id).toUpperCase() === String(idInv).toUpperCase());
-        if (idx > -1) {
-          window.inventario[idx].cantidad = (parseInt(window.inventario[idx].cantidad || 0) - diferencia);
-          if (window.inventario[idx].cantidad < 0) window.inventario[idx].cantidad = 0;
+
+        // 2. Actualizar Venta en Firebase
+        if (window.db && (ventaAntigua.firebaseId || id)) {
+            const idRef = ventaAntigua.firebaseId || id;
+            await window.db.ref("ventas").child(idRef).update({
+                producto: nuevoNombre,
+                cantidad: nuevaCant,
+                valor: nuevoValor
+            });
         }
-      }
+
+        // 3. Actualizar localmente
+        window.ventas[vIndex].producto = nuevoNombre;
+        window.ventas[vIndex].cantidad = nuevaCant;
+        window.ventas[vIndex].valor = nuevoValor;
+
+        guardarDatosLocal();
+        cerrarModalEditar();
+        mostrarVentas();      // Refresca lista central
+        renderInventarioUI(); // Refresca ventana lateral derecha
+        
+        if (typeof renderInventarioTabla === 'function') renderInventarioTabla();
+
+    } catch (error) {
+        console.error("Error al guardar edición:", error);
+        alert("Hubo un error al guardar los cambios.");
     }
+}
 
-    // 3. Actualización en Firebase y local
-    if (window.db && productoAEditar.firebaseId) {
-        const ventaActualizada = { ...productoAEditar };
-        delete ventaActualizada.uuid; 
-        delete ventaActualizada.firebaseId; 
-
-        await window.db.ref('ventas').child(productoAEditar.firebaseId).set(ventaActualizada)
-            .catch(err => console.error("Error actualizando venta en Firebase:", err));
-    }
-    
-    // 4. Fallback/Guardado local
-    const idx = window.ventas.findIndex(v => v.uuid === productoAEditar.uuid);
-    if (idx > -1) window.ventas[idx] = productoAEditar;
-
-    guardarDatosLocal();
-    cerrarModalEditar();
-    mostrarVentas();
-  } 
 
   async function eliminarProducto(ventaObj) {
-    if (!confirm(`¿Eliminar la línea de producto "${ventaObj.producto}"?`)) return; 
-    
-    // 1. Devolver stock (si aplica)
-    const idInv = ventaObj.idInventario;
-    const cantidad = ventaObj.cantidad;
-    if (idInv && cantidad > 0) {
-        if (window.db && navigator.onLine) {
-             try {
-                const ref = window.db.ref('inventario').child(idInv).child('cantidad');
-                await ref.transaction(current => {
-                    return (current || 0) + cantidad;
-                });
-            } catch(err) {
-                console.error('Error al devolver stock en Firebase:', err);
-            }
-        } else {
-             // offline: devolver local
-            const idx = window.inventario.findIndex(p => String(p.id).toUpperCase() === String(idInv).toUpperCase());
-            if (idx > -1) {
-                window.inventario[idx].cantidad = (parseInt(window.inventario[idx].cantidad || 0) + cantidad);
+    if (!confirm(`¿Eliminar la línea de "${ventaObj.producto}"? El stock se devolverá al inventario.`)) return;
+
+    // 1. Devolver Stock al Inventario
+    if (ventaObj.idInventario) {
+        const itemInv = window.inventario.find(p => p.codigo === ventaObj.idInventario);
+        if (itemInv) {
+            itemInv.cantidad += (parseInt(ventaObj.cantidad) || 0); // Sumar lo que se había vendido
+            
+            if (window.db) {
+                const refInv = window.db.ref("inventario");
+                const snap = await refInv.orderByChild("codigo").equalTo(ventaObj.idInventario).once("value");
+                if (snap.exists()) {
+                    const key = Object.keys(snap.val())[0];
+                    await refInv.child(key).child("cantidad").set(itemInv.cantidad);
+                }
             }
         }
     }
 
-    // 2. Eliminación en Firebase
-    if (window.db && ventaObj.firebaseId) { 
-        await window.db.ref('ventas').child(ventaObj.firebaseId).remove() 
-          .catch(err => console.error("Error eliminando venta en Firebase:", err)); 
-    } 
-    
-    // 3. Eliminación local
-    window.ventas = window.ventas.filter(v => v.uuid !== ventaObj.uuid); 
-    
-    // 4. Guardar y actualizar vista
-    guardarDatosLocal(); 
-    mostrarVentas(); 
-  }
-  window.addEventListener('DOMContentLoaded', () => {
-    actualizarFechaHora(); // Tu llamada a la función
-    actualizarDatalist(); 
-    actualizarDatos(); // CRÍTICO: Carga las ventas (y llamará a mostrarVentas)
-    
-    // Auto-sync periódica (intentar subir pendientes cada 10s)
-    setInterval(()=> {
-      if (navigator.onLine) sincronizarVentasFirebase();
-    }, 10000);
-  });
+    // 2. Eliminar de Firebase
+    if (window.db && (ventaObj.firebaseId || ventaObj.uuid)) {
+        const idEliminar = ventaObj.firebaseId || ventaObj.uuid;
+        await window.db.ref("ventas").child(idEliminar).remove();
+    }
+
+    // 3. Limpieza local
+    window.ventas = window.ventas.filter(v => (v.firebaseId || v.uuid) !== (ventaObj.firebaseId || ventaObj.uuid));
+
+    guardarDatosLocal();
+    mostrarVentas();
+    renderInventarioUI(); // 🔥 Actualiza ventana derecha
+    if (typeof renderInventarioTabla === 'function') renderInventarioTabla(); // 🔥 Actualiza hoja inventario
+}
 // ===============================
 // 🔥 INVENTARIO UI
 // ===============================
 
 function renderInventarioUI() {
     const lista = document.getElementById('lista-inventario');
+    if (!lista) return;
     lista.innerHTML = '';
 
-    // Inventario cargado desde Firebase
-    let inventarioValido = window.inventario || [];
+    // Usamos el inventario global que ya tiene los descuentos aplicados
+    let inventarioValido = [...(window.inventario || [])];
 
-    // 1️⃣ Ocultar productos con stock 0
+    // Ocultamos lo que no tiene stock y ordenamos por código
     inventarioValido = inventarioValido.filter(p => Number(p.cantidad) > 0);
+    inventarioValido.sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), 'es', { numeric: true }));
 
-    // 2️⃣ Ordenar por código (numérico o alfanumérico)
-    inventarioValido.sort((a, b) => {
-        const codA = String(a.codigo).trim();
-        const codB = String(b.codigo).trim();
-
-        // Si ambos códigos son números → orden numérico real
-        if (!isNaN(codA) && !isNaN(codB)) {
-            return Number(codA) - Number(codB);
-        }
-
-        // Otros casos → orden natural
-        return codA.localeCompare(codB, 'es', { numeric: true });
-    });
-
-    // 3️⃣ Renderizar inventario ordenado
     inventarioValido.forEach(producto => {
         const div = document.createElement('div');
         div.className = 'producto-inventario';
-
-        const idText = producto.codigo ? `${producto.codigo} - ` : "";
-        const nombreText = producto.nombre || "SIN NOMBRE";
-        const stockText = producto.cantidad !== undefined ? ` (${producto.cantidad})` : "";
-
-        // Contenedor principal del producto
-div.innerHTML = `
-    <span style="flex:1;">${idText}${nombreText}</span>
-    <span style="font-weight:bold; color:#007bff; min-width:50px; text-align:right;">
-        ${producto.cantidad}
-    </span>
-`;
-lista.appendChild(div);
-
+        // Estilo visual para resaltar el cambio
+        div.innerHTML = `
+            <span style="flex:1;">${producto.codigo ? producto.codigo + ' - ' : ''}${producto.nombre}</span>
+            <span style="font-weight:bold; color:#007bff; background: #e0f0ff; padding: 2px 6px; border-radius: 4px;">${producto.cantidad}</span>
+        `;
+        lista.appendChild(div);
     });
+    
+    // Actualizamos la hora de la última actualización visual
+    const stiloHora = document.getElementById('inventario-ultima');
+    if (stiloHora) stiloHora.textContent = new Date().toLocaleTimeString();
 }
 
 function autocompletarVentaPorId() {
@@ -1610,7 +1687,31 @@ document.getElementById("toggle-clientes").addEventListener("click", () => {
 </script>
 <script>
 
-document.addEventListener('DOMContentLoaded', cargarInicial);
+
+document.addEventListener('DOMContentLoaded', () => {
+  const inputFecha = document.getElementById('filtro-fecha');
+  const hoyChile = getFechaChile();
+  if (inputFecha) {
+    inputFecha.value = hoyChile;
+    inputFecha.addEventListener('change', mostrarVentas);
+  }
+});
+// 🔥 FUERZA MAYÚSCULAS EN LOS CAMPOS DEL FORMULARIO
+document.addEventListener('input', function (e) {
+    // Lista de IDs que queremos forzar a mayúsculas
+    const camposAMayusculas = [
+        'venta-cliente', 
+        'venta-id', 
+        'venta-producto', 
+        'cliente-nombre', 
+        'cliente-nuevo-nombre',
+        'editar-producto'
+    ];
+
+    if (camposAMayusculas.includes(e.target.id)) {
+        e.target.value = e.target.value.toUpperCase();
+    }
+});
 </script>
  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:20px 0;">
         <label for="fecha-reporte" style="font-size:14px;">📅 Reporte:</label>
