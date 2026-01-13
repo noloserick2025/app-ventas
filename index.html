@@ -268,6 +268,18 @@
   animation: pulse-orange 1.5s infinite;
 }
 
+.btn-print-linea {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  margin-left: 6px;
+  opacity: 0.6;
+}
+
+.btn-print-linea:hover {
+  opacity: 1;
+}
 
   </style>
 </head>
@@ -553,7 +565,7 @@ firebase.auth().onAuthStateChanged(user => {
   // CLIENTES
   window.db.ref("clientes").on("value", snap => {
     const data = snap.val() || {};
-    window.clientes = Object.values(data);
+    window.clientes = Object.keys(data || {});
     localStorage.setItem("clientes", JSON.stringify(window.clientes));
     actualizarDatalist();
   });
@@ -609,107 +621,98 @@ function respaldoAutomaticoLocal() {
 setInterval(respaldoAutomaticoLocal, 5 * 60 * 1000);
 
 
+
+function normalizarFechaSimple(valor) {
+  if (!valor) return null;
+
+  // Timestamp
+  if (typeof valor === "number") {
+    return new Date(valor).toISOString().slice(0, 10);
+  }
+
+  // String
+  const d = new Date(valor);
+  if (!isNaN(d)) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  return null;
+}
+
+
 function descargarVentasPorDia() {
-  if (!window.ventas) {
-    alert("No hay datos de ventas");
+
+  if (!Array.isArray(window.ventas) || window.ventas.length === 0) {
+    alert("No hay ventas registradas para respaldar.");
     return;
   }
 
-  // 🧠 Obtener lista real de ventas
-  const listaVentas = Array.isArray(window.ventas)
-    ? window.ventas
-    : Array.isArray(window.ventas.ventas)
-      ? window.ventas.ventas
-      : [];
+  // ==================================================
+  // 1️⃣ RESPALDO COMPLETO (JSON TOTAL)
+  // ==================================================
+  const respaldoCompleto = {
+    generado: new Date().toISOString(),
+    totalVentas: window.ventas.length,
+    ventas: [...window.ventas].sort((a, b) => {
+  const fa = new Date(a.timestamp || a.fecha).getTime() || 0;
+  const fb = new Date(b.timestamp || b.fecha).getTime() || 0;
+  return fb - fa; // más nuevas primero
+})
 
-  if (listaVentas.length === 0) {
-    alert("No hay ventas registradas");
-    return;
-  }
-
-  // 📅 Fecha del calendario (YYYY-MM-DD)
-  const inputFecha = document.getElementById("filtro-fecha");
-  const fechaSeleccionada = inputFecha?.value || getFechaChile();
-
-  // 🔄 Normalizar fecha YYYY-MM-DD
-  const normalizarFecha = (valor) => {
-    if (!valor) return null;
-
-    // Caso timestamp
-    if (typeof valor === "number") {
-      return new Intl.DateTimeFormat("sv-SE", {
-        timeZone: "America/Santiago",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      }).format(new Date(valor));
-    }
-
-    // Caso string DD-MM-YYYY o DD/MM/YYYY
-    if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(valor)) {
-      const [d, m, y] = valor.split(/[-/]/);
-      return `${y}-${m}-${d}`;
-    }
-
-    // Caso YYYY-MM-DD o ISO
-    const d = new Date(valor);
-    if (!isNaN(d)) {
-      return new Intl.DateTimeFormat("sv-SE", {
-        timeZone: "America/Santiago",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      }).format(d);
-    }
-
-    return null;
   };
 
-  // 🔎 Filtrar ventas del día
-  const ventasDelDia = listaVentas.filter(v => {
-    const fechaVenta =
-      normalizarFecha(v.fecha) ||
-      normalizarFecha(v.timestamp);
-
-    return fechaVenta === fechaSeleccionada;
-  });
-
-  if (ventasDelDia.length === 0) {
-    alert("No hay ventas para la fecha seleccionada");
-    return;
-  }
-
-  // 🔃 Ordenar: más reciente → más antigua
-  const ventasOrdenadas = [...ventasDelDia].sort((a, b) => {
-    return (b.timestamp || 0) - (a.timestamp || 0);
-  });
-
-  // =====================
-  // 1️⃣ DESCARGAR JSON
-  // =====================
-  const respaldoJSON = {
-    fechaRespaldo: new Date().toISOString(),
-    fechaVentas: fechaSeleccionada,
-    totalVentas: ventasOrdenadas.reduce((s, v) => s + (v.valor || 0), 0),
-    ventas: ventasOrdenadas
-  };
-
-  const jsonBlob = new Blob(
-    [JSON.stringify(respaldoJSON, null, 2)],
+  const blobJSON = new Blob(
+    [JSON.stringify(respaldoCompleto, null, 2)],
     { type: "application/json" }
   );
 
-  const jsonURL = URL.createObjectURL(jsonBlob);
-  const a = document.createElement("a");
-  a.href = jsonURL;
-  a.download = `ventas_${fechaSeleccionada}.json`;
-  a.click();
-  URL.revokeObjectURL(jsonURL);
+  const urlJSON = URL.createObjectURL(blobJSON);
+  const aJSON = document.createElement("a");
+  aJSON.href = urlJSON;
+  aJSON.download = "respaldo_completo_ventas.json";
+  aJSON.click();
+  URL.revokeObjectURL(urlJSON);
 
-  // =====================
-  // 2️⃣ DESCARGAR EXCEL
-  // =====================
-  generarExcelVentas(ventasOrdenadas, fechaSeleccionada);
+  // ==================================================
+  // 2️⃣ EXCEL DIARIO (SI HAY FECHA)
+  // ==================================================
+  const inputFecha = document.getElementById("fecha-reporte");
+  const fechaSeleccionada = inputFecha?.value;
+
+  if (!fechaSeleccionada) {
+    console.log("Respaldo completo generado. No se solicitó Excel diario.");
+    return;
+  }
+
+  // Normalizar fecha
+  const normalizar = (v) => {
+    if (!v) return null;
+    if (typeof v === "number") {
+      return new Date(v).toISOString().slice(0, 10);
+    }
+    const d = new Date(v);
+    return isNaN(d) ? null : d.toISOString().slice(0, 10);
+  };
+
+  const ventasDelDia = window.ventas.filter(v => {
+    return (
+      normalizar(v.fecha) === fechaSeleccionada ||
+      normalizar(v.timestamp) === fechaSeleccionada
+    );
+  });
+
+  if (ventasDelDia.length === 0) {
+    alert(
+      "Respaldo completo descargado.\n" +
+      "No existen ventas para la fecha seleccionada."
+    );
+    return;
+  }
+
+  // ==================================================
+  // 3️⃣ GENERAR EXCEL DEL DÍA
+  // ==================================================
+  generarExcelVentas(ventasDelDia, fechaSeleccionada);
 }
 
 
@@ -791,14 +794,9 @@ function guardarDatosLocal() {
 // ===============================
 
 function actualizarFechaHora() {
-    const ahora = new Date();
-    const opciones = {
-        year:'numeric', month:'2-digit', day:'2-digit',
-        hour:'2-digit', minute:'2-digit', second:'2-digit',
-        timeZone: 'America/Santiago'
-    };
-    document.getElementById('fechaHoraActual').textContent =
-        ahora.toLocaleString('es-CL', opciones).replace(',', '');
+  const el = document.getElementById("fechaActual");
+  if (!el) return;
+  el.textContent = obtenerFechaHoraChile();
 }
 
 setInterval(actualizarFechaHora, 1000);
@@ -925,7 +923,7 @@ ventasArray = Object.keys(ventasObj).map(key => {
         window.ventas = ventasArray;
         localStorage.setItem('ventas', JSON.stringify(ventasArray));
         if (typeof mostrarVentas === 'function') mostrarVentas();
-        repararClientesFaltantes();
+        //repararClientesFaltantes();
 
     } catch (error) {
         console.error("❌ Error al cargar datos de Firebase:", error);
@@ -1018,7 +1016,15 @@ async function eliminarCliente() {
     }
 
     window.ventas = window.ventas.filter(v => v.cliente !== cliente);
-    window.clientes = window.clientes.filter(c => c !== cliente);
+// 🔥 ELIMINAR TAMBIÉN DE FIREBASE (CLAVE)
+if (window.db && navigator.onLine) {
+  try {
+    await window.db.ref("clientes").child(cliente).remove();
+  } catch (e) {
+    console.error("Error eliminando cliente en Firebase:", e);
+  }
+} 
+   window.clientes = window.clientes.filter(c => c !== cliente);
 
     guardarDatosLocal();
     actualizarDatalist();
@@ -1137,6 +1143,13 @@ function sincronizarVentasFirebase() {
 
 async function registrarVenta() {
   const cliente = document.getElementById("venta-cliente").value.trim().toUpperCase();
+
+// ❌ BLOQUEAR CLIENTES NO REGISTRADOS
+if (!window.clientes.includes(cliente)) {
+  alert("⚠️ El cliente no existe. Debes crearlo antes de registrar la venta.");
+  return;
+}
+
   const idInventario = document.getElementById("venta-id").value.trim().toUpperCase();
   const producto = document.getElementById("venta-producto").value.trim().toUpperCase();
   const cantidad = parseInt(document.getElementById("venta-cantidad").value) || 1;
@@ -1280,14 +1293,19 @@ function mostrarVentas() {
       // ===== PRODUCTOS =====
       agrupado[fecha][cliente].forEach(v => {
 
-        const fila = document.createElement('div');
-        fila.className = 'producto';
-        if (v.embalado) fila.classList.add('embalado');
+       const nombreProducto =
+  v.producto || v.descripcion || v.detalle || '(Producto antiguo)';
 
-        const nombreProducto =
-          v.producto || v.descripcion || v.detalle || '(Producto antiguo)';
+const correlativo = v.correlativo || '--';
 
-        const correlativo = v.correlativo || '--';
+const fila = document.createElement('div');
+fila.className = 'producto linea-venta';
+if (v.embalado) fila.classList.add('embalado');
+
+// ===== DATOS PARA REIMPRESIÓN =====
+fila.dataset.cliente = cliente;
+fila.dataset.correlativo = correlativo;
+fila.dataset.fecha = fecha;
 
         const chk = document.createElement('input');
         chk.type = 'checkbox';
@@ -1342,7 +1360,12 @@ function mostrarVentas() {
         btnEliminar.onclick = () =>
           eliminarProducto(v);
 
-        accionesProd.append(btnEditar, btnEliminar);
+        const btnPrint = document.createElement('button');
+btnPrint.textContent = '🖨️';
+btnPrint.title = 'Reimprimir etiqueta';
+btnPrint.onclick = () => reimprimirEtiquetaLinea(btnPrint);
+
+accionesProd.append(btnPrint, btnEditar, btnEliminar);
 
         fila.append(chk, spanCorr, spanProd, spanVal, accionesProd);
         tarjeta.appendChild(fila);
@@ -1443,6 +1466,16 @@ function imprimirEtiquetaVenta(cliente, correlativo, fecha) {
     }, 100);
 }
 
+function reimprimirEtiquetaLinea(btn) {
+  const linea = btn.closest(".linea-venta");
+  if (!linea) return;
+
+  const cliente     = linea.dataset.cliente;
+  const correlativo = linea.dataset.correlativo;
+  const fecha       = linea.dataset.fecha;
+
+  imprimirEtiquetaVenta(cliente, correlativo, fecha);
+}
 
 function limpiarCamposDespuesVenta() {
     // Limpia todos los campos de entrada de la venta
