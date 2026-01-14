@@ -281,6 +281,49 @@
   opacity: 1;
 }
 
+@media (max-width: 768px) {
+
+  nav {
+    flex-direction: column;
+    height: auto !important;
+    gap: 8px;
+  }
+
+  .main-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  aside.panel {
+    display: none;
+  }
+
+  .formulario input,
+  .formulario button {
+    font-size: 16px;
+    padding: 10px;
+  }
+
+  .cliente-reporte {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .producto {
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .producto button {
+    padding: 6px 10px;
+  }
+
+  #total-hoy {
+    font-size: 22px;
+    text-align: center;
+  }
+}
+
   </style>
 </head>
 
@@ -356,10 +399,10 @@
 
           <input id="venta-cliente"
                  placeholder="Nombre del cliente"
-                 list="clientes"
+                 list="datalist-clientes"
                  onkeydown="moverFoco(event, 'venta-id')">
 
-          <datalist id="clientes"></datalist>
+          <datalist id="datalist-clientes"></datalist>
 
           <input id="venta-id"
                  placeholder="ID (opcional)"
@@ -439,6 +482,8 @@
 
 
 <script>
+let bloqueandoVenta = false;
+
 // ===============================
 // REDIRECCIÓN SI NO HAY SESIÓN
 // ===============================
@@ -450,13 +495,19 @@ firebase.auth().onAuthStateChanged(user => {
 // FECHA CHILE
 // ===============================
 function getFechaChile() {
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Santiago',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date());
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Santiago"
+  });
 }
+
+
+function obtenerFechaHoraChile() {
+  return new Date().toLocaleString("es-CL", {
+    timeZone: "America/Santiago",
+    hour12: false
+  });
+}
+
 
 // ===============================
 // ESTADOS PERSISTENTES
@@ -821,7 +872,7 @@ function obtenerCodigoCorrelativo() {
 // 🔥 FUNCIÓN ACTUALIZAR DATALIST (REPARADA)
 // ===============================================
 function actualizarDatalist() {
-    const datalist = document.getElementById('clientes');
+    const datalist = document.getElementById('datalist-clientes');
     const selectEliminar = document.getElementById('cliente-eliminar');
 
     if (datalist) datalist.innerHTML = "";
@@ -903,13 +954,25 @@ ventasArray = Object.keys(ventasObj).map(key => {
       // Si Firebase devuelve un objeto de clientes, Object.values() lo convierte a un Array.
       // Si devuelve un Array, Object.values() funciona igual.
       // Si devuelve un valor primitivo o null/undefined, usamos un Array vacío [] como fallback.
-      const clientesData = clientesSnapshot.val();
-      window.clientes = Array.isArray(clientesData) 
-                          ? clientesData.filter(c => c) // Filtra nulos si es un array
-                          : Object.values(clientesData || {}); // Convierte objeto a array
-      
-      localStorage.setItem('clientes', JSON.stringify(window.clientes));
-      actualizarDatalist();
+     const clientesData = clientesSnapshot.val();
+window.clientes = Object.keys(clientesData || {})
+  .filter(c => isNaN(c))
+  .map(c => c.toUpperCase());
+
+let clientesNormalizados = [];
+
+if (clientesData && typeof clientesData === "object") {
+    clientesNormalizados = Object.values(clientesData)
+        .filter(c => typeof c === "string" && isNaN(c)) // ⬅️ CLAVE
+        .map(c => c.trim().toUpperCase());
+}
+
+window.clientes = clientesNormalizados;
+
+// Guardar limpio
+localStorage.setItem("clientes", JSON.stringify(window.clientes));
+actualizarDatalist();
+
   }
  
         const inventarioSnapshot = await window.db.ref('inventario').once('value');
@@ -1142,12 +1205,20 @@ function sincronizarVentasFirebase() {
 
 
 async function registrarVenta() {
+
+if (bloqueandoVenta) return;
+  bloqueandoVenta = true;
+
+  setTimeout(() => {
+    bloqueandoVenta = false;
+  }, 800);
   const cliente = document.getElementById("venta-cliente").value.trim().toUpperCase();
 
 // ❌ BLOQUEAR CLIENTES NO REGISTRADOS
 if (!window.clientes.includes(cliente)) {
   alert("⚠️ El cliente no existe. Debes crearlo antes de registrar la venta.");
-  return;
+bloqueandoVenta = false; // 🔥 CLAVe  
+return;
 }
 
   const idInventario = document.getElementById("venta-id").value.trim().toUpperCase();
@@ -1858,6 +1929,45 @@ document.addEventListener('input', function (e) {
         e.target.value = e.target.value.toUpperCase();
     }
 });
+
+async function reconstruirClientesDesdeVentas() {
+  if (!window.ventas || !window.ventas.length) {
+    alert("No hay ventas para reconstruir clientes");
+    return;
+  }
+
+  // 1️⃣ Obtener clientes reales desde ventas
+  const clientesReales = [
+    ...new Set(
+      window.ventas
+        .map(v => v.cliente)
+        .filter(c => c && isNaN(c))
+        .map(c => c.toUpperCase())
+    )
+  ].sort();
+
+  if (!clientesReales.length) {
+    alert("No se encontraron clientes válidos en las ventas");
+    return;
+  }
+
+  // 2️⃣ Guardar LOCAL
+  window.clientes = clientesReales;
+  localStorage.setItem("clientes", JSON.stringify(clientesReales));
+
+  // 3️⃣ Guardar en Firebase (REEMPLAZO CONTROLADO)
+  if (window.db && navigator.onLine) {
+    const clientesObj = {};
+    clientesReales.forEach(c => clientesObj[c] = c);
+    await window.db.ref("clientes").set(clientesObj);
+  }
+
+  // 4️⃣ Refrescar UI
+  actualizarDatalist();
+
+  alert(`Clientes reconstruidos correctamente (${clientesReales.length})`);
+}
+
 </script>
  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:20px 0;">
         <label for="fecha-reporte" style="font-size:14px;">📅 Reporte:</label>
