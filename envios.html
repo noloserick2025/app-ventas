@@ -69,8 +69,12 @@
     firebase.database().goOnline(); 
 
     let ventasData = [];
-    let ocultos = JSON.parse(localStorage.getItem('envios_v_sync') || "[]");
+    let ocultos = [];
     const db = firebase.database();
+    db.ref("envios_ocultos").on("value", snap=>{
+    ocultos = snap.val() ? Object.keys(snap.val()) : [];
+    mostrarEnvios();
+});
 
     // 1. LISTENER REALTIME EFICIENTE
     // Usamos 'value' pero con una técnica de renderizado diferido
@@ -136,12 +140,17 @@
             let htmlItems = '';
             grupo.items.forEach(item => {
                 const sClase = item.entregado ? 'status-entregado' : (item.enviado ? 'status-enviado' : '');
-                const msg = item.fechaEnvioReal ? `<div class="msg-enviado">✅ ENVIADO: ${item.fechaEnvioReal}</div>` : '';
+                <span style="flex:1">
+const msg = item.fechaEnvioReal ?
+`<div class="msg-enviado">✔️ ENVIADO EL ${item.fechaEnvioReal}</div>` : '';
                 
                 htmlItems += `
                     <div class="producto-item ${sClase}">
                         <div class="producto-fila-main">
-                            <span style="flex:1"><b>${item.cantidad}</b> - ${item.producto}</span>
+                            <span style="flex:1">
+${item.enviado || item.entregado ? "✔️ " : ""}
+<b>${item.cantidad}</b> - ${item.producto}
+</span>
                             <input type="date" id="cal-${item.firebaseId}" value="${item.fechaEnvioReal || ''}" style="width:115px; font-size:10px;">
                             <button class="btn btn-enviar" onclick="acc('${item.firebaseId}','env',true)">Enviar</button>
                             <button class="btn btn-entregar" onclick="acc('${item.firebaseId}','ent',true)">Entregar</button>
@@ -172,30 +181,39 @@
     }
 
     // OPERACIONES ATÓMICAS (Más rápidas y seguras para Realtime)
-   function acc(id, tipo, val) {
+   function acc(id, tipo){
+
     const ref = db.ref(`ventas/${id}`);
 
-    if(tipo === 'env') {
-        const f = document.getElementById(`cal-${id}`).value;
+    if(tipo === 'env'){
+
+        const f = document.getElementById(`cal-${id}`).value || new Date().toISOString().split('T')[0];
 
         ref.update({
-            enviado: true,
-            fechaEnvioReal: f || new Date().toISOString().split('T')[0]
+            enviado:true,
+            fechaEnvioReal:f
         })
-        .then(()=> console.log("✅ Firebase actualizado"))
-        .catch(err => console.error("🔥 Error Firebase:", err));
+        .then(()=>console.log("Actualizado"))
+        .catch(e=>console.error(e));
     }
 
-    else if(tipo === 'ent') {
-        ref.update({ entregado: true, enviado: true })
-        .then(()=> console.log("✅ Firebase actualizado"))
-        .catch(err => console.error("🔥 Error Firebase:", err));
+    else if(tipo === 'ent'){
+
+        ref.update({
+            entregado:true,
+            enviado:true
+        });
+
     }
 
-    else {
-        ref.update({ enviado:false, entregado:false, fechaEnvioReal:null })
-        .then(()=> console.log("✅ Firebase actualizado"))
-        .catch(err => console.error("🔥 Error Firebase:", err));
+    else{
+
+        ref.update({
+            enviado:false,
+            entregado:false,
+            fechaEnvioReal:null
+        });
+
     }
 }
     function lote(clave, accion) {
@@ -220,12 +238,13 @@
     }
 
     // GESTIÓN DE INTERFAZ
-    function ocultar(c) { ocultos.push(c); saveOcultos(); }
-    function restaurar(c) { ocultos = ocultos.filter(x => x!==c); saveOcultos(); }
-    function saveOcultos() { 
-        localStorage.setItem('envios_v_sync', JSON.stringify(ocultos)); 
-        mostrarEnvios(); 
-    }
+    function ocultar(c){
+    db.ref("envios_ocultos/"+c).set(true);
+}
+
+function restaurar(c){
+    db.ref("envios_ocultos/"+c).remove();
+}
 
     document.getElementById('f-fecha').onchange = mostrarEnvios;
     document.getElementById('f-cliente').oninput = mostrarEnvios;
