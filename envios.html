@@ -172,18 +172,32 @@
     }
 
     // OPERACIONES ATÓMICAS (Más rápidas y seguras para Realtime)
-    function acc(id, tipo, val) {
-        const ref = db.ref(`ventas/${id}`);
-        if(tipo === 'env') {
-            const f = document.getElementById(`cal-${id}`).value;
-            ref.update({ enviado: true, fechaEnvioReal: f || new Date().toISOString().split('T')[0] });
-        } else if(tipo === 'ent') {
-            ref.update({ entregado: true, enviado: true });
-        } else {
-            ref.update({ enviado: false, entregado: false, fechaEnvioReal: null });
-        }
+   function acc(id, tipo, val) {
+    const ref = db.ref(`ventas/${id}`);
+
+    if(tipo === 'env') {
+        const f = document.getElementById(`cal-${id}`).value;
+
+        ref.update({
+            enviado: true,
+            fechaEnvioReal: f || new Date().toISOString().split('T')[0]
+        })
+        .then(()=> console.log("✅ Firebase actualizado"))
+        .catch(err => console.error("🔥 Error Firebase:", err));
     }
 
+    else if(tipo === 'ent') {
+        ref.update({ entregado: true, enviado: true })
+        .then(()=> console.log("✅ Firebase actualizado"))
+        .catch(err => console.error("🔥 Error Firebase:", err));
+    }
+
+    else {
+        ref.update({ enviado:false, entregado:false, fechaEnvioReal:null })
+        .then(()=> console.log("✅ Firebase actualizado"))
+        .catch(err => console.error("🔥 Error Firebase:", err));
+    }
+}
     function lote(clave, accion) {
         const [c, f] = clave.split('_');
         const targets = ventasData.filter(v => v.cliente.toUpperCase() === c && (v.fecha ? v.fecha.split('T')[0] : 'SIN FECHA') === f);
