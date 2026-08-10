@@ -1422,14 +1422,18 @@ fila.dataset.fecha = fecha;
         accionesProd.style.gap = '6px';
 
         const btnEditar = document.createElement('button');
-        btnEditar.textContent = 'Editar';
-        btnEditar.onclick = () =>
-          abrirModalEditar(v.uuid || v.firebaseId);
+btnEditar.textContent = '✏️';
+btnEditar.title = 'Editar';
+btnEditar.setAttribute('aria-label', 'Editar');
+btnEditar.onclick = () =>
+  abrirModalEditar(v.uuid || v.firebaseId);
 
-        const btnEliminar = document.createElement('button');
-        btnEliminar.textContent = 'Eliminar';
-        btnEliminar.onclick = () =>
-          eliminarProducto(v);
+const btnEliminar = document.createElement('button');
+btnEliminar.textContent = '🗑️';
+btnEliminar.title = 'Eliminar';
+btnEliminar.setAttribute('aria-label', 'Eliminar');
+btnEliminar.onclick = () =>
+  eliminarProducto(v);
 
         const btnPrint = document.createElement('button');
 btnPrint.textContent = '🖨️';
