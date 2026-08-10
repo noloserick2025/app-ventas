@@ -199,7 +199,6 @@
 }
 
 
-}
 #btn-logout {
   border: none;
   width: 42px;
@@ -1415,33 +1414,47 @@ fila.dataset.fecha = fecha;
           nombreProducto + (v.cantidad > 1 ? ` x${v.cantidad}` : '');
 
         const spanVal = document.createElement('strong');
-        spanVal.textContent = `$${v.valor || 0}`;
+spanVal.textContent = `$${v.valor || 0}`;
+
+if (v.pagada) {
+    spanVal.style.textDecoration = 'line-through';
+}
 
         const accionesProd = document.createElement('div');
         accionesProd.style.display = 'flex';
         accionesProd.style.gap = '6px';
 
-        const btnEditar = document.createElement('button');
-btnEditar.textContent = '✏️';
-btnEditar.title = 'Editar';
-btnEditar.setAttribute('aria-label', 'Editar');
-btnEditar.onclick = () =>
-  abrirModalEditar(v.uuid || v.firebaseId);
-
-const btnEliminar = document.createElement('button');
+        // ===== BOTÓN EDITAR =====// 
+         const btnEditar = document.createElement('button'); btnEditar.textContent = '✏️';
+          btnEditar.title = 'Editar';
+           btnEditar.setAttribute('aria-label', 'Editar');
+            btnEditar.onclick = () => { editarProductoVenta(v); };
+        
+            const btnEliminar = document.createElement('button');
 btnEliminar.textContent = '🗑️';
 btnEliminar.title = 'Eliminar';
 btnEliminar.setAttribute('aria-label', 'Eliminar');
 btnEliminar.onclick = () =>
   eliminarProducto(v);
 
-        const btnPrint = document.createElement('button');
+const btnPrint = document.createElement('button');
 btnPrint.textContent = '🖨️';
 btnPrint.title = 'Reimprimir etiqueta';
 btnPrint.onclick = () => reimprimirEtiquetaLinea(btnPrint);
 
-accionesProd.append(btnPrint, btnEditar, btnEliminar);
+// 💰 BOTÓN PAGAR
+const btnPagar = document.createElement('button');
+btnPagar.textContent = '💰';
+btnPagar.title = v.pagada ? 'Venta pagada' : 'Marcar como pagada';
+btnPagar.setAttribute('aria-label', v.pagada ? 'Venta pagada' : 'Marcar como pagada');
 
+btnPagar.onclick = () => pagarLineaVenta(v);
+
+if (v.pagada) {
+    btnPagar.style.opacity = '0.5';
+}
+
+accionesProd.append(btnPrint, btnEditar, btnEliminar, btnPagar);
         fila.append(chk, spanCorr, spanProd, spanVal, accionesProd);
         tarjeta.appendChild(fila);
 
@@ -1465,14 +1478,56 @@ accionesProd.append(btnPrint, btnEditar, btnEliminar);
         );
 
         let mensaje = `Hola ${cliente}, Menajes Vasaya agradece tu preferencia, se adjunta detalle y el total a pagar, venta del (${fecha})\n\n`;
-        let total = 0;
 
-        ventasCliente.forEach(v => {
-          mensaje += `- ${v.producto || 'Producto'} $${v.valor}\n`;
-          total += Number(v.valor || 0);
-        });
+let total = 0;
+let totalAbono = 0;
+let totalSaldo = 0;
 
-        mensaje += `\nTotal: $${total}`;
+// ¿Existe al menos una línea pagada?
+const existeLineaPagada = ventasCliente.some(v => v.pagada === true);
+
+if (!existeLineaPagada) {
+
+    // ==========================================
+    // MENSAJE ORIGINAL
+    // ==========================================
+    ventasCliente.forEach(v => {
+
+        mensaje += `- ${v.producto || 'Producto'} $${v.valor}\n`;
+
+        total += Number(v.valor || 0);
+    });
+
+    mensaje += `\nTotal: $${total}`;
+
+} else {
+
+    // ==========================================
+    // MENSAJE CON ABONO Y SALDO
+    // ==========================================
+    ventasCliente.forEach(v => {
+
+        const valor = Number(v.valor || 0);
+
+        // Una venta pagada equivale a abono completo
+        const abono = v.pagada
+            ? valor
+            : Number(v.abono || 0);
+
+        const saldo = Math.max(0, valor - abono);
+
+        total += valor;
+        totalAbono += abono;
+        totalSaldo += saldo;
+
+        mensaje += `- ${v.producto || 'Producto'} $${valor}\n`;
+        
+    });
+
+    mensaje += `\nTotal: $${total}`;
+    mensaje += `\nAbono: $${totalAbono}`;
+    mensaje += `\nSaldo: $${totalSaldo}`;
+}
 
         window.open(
           `https://wa.me/?text=${encodeURIComponent(mensaje)}`,
@@ -1561,6 +1616,149 @@ function limpiarCamposDespuesVenta() {
     document.getElementById('venta-cantidad').value = 1; // Deja la cantidad en 1 (o 0 si prefiere)
     document.getElementById('stock-disponible').textContent = 0;
 }
+
+// ===============================================
+// 💰 PAGAR / REVERTIR UNA LÍNEA DE VENTA
+// ===============================================
+async function pagarLineaVenta(ventaObj) {
+
+    if (!ventaObj) return;
+
+    const valor = Number(ventaObj.valor || 0);
+
+    if (valor <= 0) {
+        alert("Esta venta no tiene un valor válido.");
+        return;
+    }
+
+    // ==========================================
+    // SI YA ESTÁ PAGADA → REVERTIR EL PAGO
+    // ==========================================
+    if (ventaObj.pagada) {
+
+        const confirmarRevertir = confirm(
+            `¿Quieres revertir el pago de $${valor} por "${ventaObj.producto || 'Producto'}"?\n\n` +
+            `La venta volverá a quedar pendiente de pago.`
+        );
+
+        if (!confirmarRevertir) return;
+
+        // Actualizar objeto local
+        ventaObj.pagada = false;
+        ventaObj.abono = 0;
+        ventaObj.saldo = valor;
+
+        // Guardar localmente
+        guardarDatosLocal();
+
+        // Guardar en Firebase
+        const idVenta = ventaObj.firebaseId || ventaObj.uuid;
+
+        if (window.db && idVenta) {
+            try {
+
+                await window.db
+                    .ref("ventas")
+                    .child(idVenta)
+                    .update({
+                        pagada: false,
+                        abono: 0,
+                        saldo: valor
+                    });
+
+            } catch (e) {
+
+                console.error(
+                    "Error revirtiendo pago en Firebase:",
+                    e
+                );
+
+                alert(
+                    "El pago fue revertido localmente, " +
+                    "pero no se pudo sincronizar con Firebase."
+                );
+
+                mostrarVentas();
+                return;
+            }
+        }
+
+        // Refrescar pantalla
+        mostrarVentas();
+
+        alert(
+            `Pago revertido correctamente.\n\n` +
+            `Producto: ${ventaObj.producto || 'Producto'}\n` +
+            `Valor: $${valor}\n` +
+            `Abono: $0\n` +
+            `Saldo: $${valor}`
+        );
+
+        return;
+    }
+
+    // ==========================================
+    // SI NO ESTÁ PAGADA → REGISTRAR PAGO
+    // ==========================================
+
+    const confirmar = confirm(
+        `¿Confirmar pago de $${valor} por "${ventaObj.producto || 'Producto'}"?`
+    );
+
+    if (!confirmar) return;
+
+    // Actualizar objeto local
+    ventaObj.pagada = true;
+    ventaObj.abono = valor;
+    ventaObj.saldo = 0;
+
+    // Guardar localmente
+    guardarDatosLocal();
+
+    // Guardar en Firebase
+    const idVenta = ventaObj.firebaseId || ventaObj.uuid;
+
+    if (window.db && idVenta) {
+        try {
+
+            await window.db
+                .ref("ventas")
+                .child(idVenta)
+                .update({
+                    pagada: true,
+                    abono: valor,
+                    saldo: 0
+                });
+
+        } catch (e) {
+
+            console.error(
+                "Error guardando pago en Firebase:",
+                e
+            );
+
+            alert(
+                "El pago quedó guardado localmente, " +
+                "pero no se pudo sincronizar con Firebase."
+            );
+
+            mostrarVentas();
+            return;
+        }
+    }
+
+    // Refrescar pantalla
+    mostrarVentas();
+
+    alert(
+        `Pago registrado correctamente.\n\n` +
+        `Producto: ${ventaObj.producto || 'Producto'}\n` +
+        `Valor: $${valor}\n` +
+        `Abono: $${valor}\n` +
+        `Saldo: $0`
+    );
+}
+
 
 function abrirModalEditar(uuid) {
     const v = window.ventas.find(x => x.uuid === uuid || x.firebaseId === uuid);
