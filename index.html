@@ -321,6 +321,64 @@
     font-size: 22px;
     text-align: center;
   }
+    /* ===== AJUSTE COMPACTO PARA MÓVIL ===== */
+
+  .formulario {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    padding: 10px !important;
+    margin-bottom: 8px;
+  }
+
+  .formulario > div {
+    width: 100%;
+  }
+
+  .formulario h2 {
+    font-size: 20px;
+    margin: 8px 0;
+  }
+
+  .formulario input,
+  .formulario select,
+  .formulario button {
+    box-sizing: border-box;
+    max-width: 100% !important;
+  }
+
+  #venta-cliente,
+  #venta-producto,
+  #venta-valor {
+    width: 100%;
+  }
+
+  #venta-id {
+    width: 120px;
+  }
+
+  #venta-cantidad {
+    width: 80px;
+  }
+
+  #guardar-venta {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  #total-hoy {
+    font-size: 22px !important;
+    margin-top: 12px !important;
+  }
+
+  #reporte {
+    margin-top: 10px !important;
+  }
+
+  .inventario-panel {
+    width: 100%;
+    box-sizing: border-box;
+  }
 }
 
   </style>
@@ -1036,25 +1094,158 @@ async function agregarCliente() {
 // 🔥 EDITAR CLIENTE
 // ===============================
 
-function editarCliente() {
+// ===============================
+// 🔥 EDITAR CLIENTE
+// ===============================
+
+async function editarCliente() {
+
     const select = document.getElementById('cliente-eliminar');
-    const nuevo = document.getElementById('cliente-nuevo-nombre').value.trim().toUpperCase();
+    const inputNuevo = document.getElementById('cliente-nuevo-nombre');
+
+    if (!select || !inputNuevo) {
+        alert("No se encontraron los campos para editar el cliente.");
+        return;
+    }
+
     const actual = select.value.trim().toUpperCase();
+    const nuevo = inputNuevo.value.trim().toUpperCase();
 
-    if (!actual) return alert("Selecciona cliente.");
-    if (!nuevo) return alert("Nuevo nombre vacío.");
-    if (window.clientes.includes(nuevo)) return alert("Ese nombre ya existe.");
+    if (!actual) {
+        alert("Selecciona el cliente que quieres editar.");
+        return;
+    }
 
-    window.clientes = window.clientes.map(c => c === actual ? nuevo : c);
-    window.ventas.forEach(v => { if (v.cliente === actual) v.cliente = nuevo });
+    if (!nuevo) {
+        alert("Ingresa el nuevo nombre del cliente.");
+        return;
+    }
+
+    // Si no hubo ningún cambio
+    if (actual === nuevo) {
+        alert("El nuevo nombre es igual al nombre actual.");
+        return;
+    }
+
+    // Evitar duplicados
+    if (window.clientes.includes(nuevo)) {
+        alert(`El cliente "${nuevo}" ya existe.`);
+        return;
+    }
+
+    // Confirmar antes de modificar
+    const confirmar = confirm(
+        `¿Quieres cambiar el cliente "${actual}" por "${nuevo}"?\n\n` +
+        `También se actualizarán sus ventas existentes.`
+    );
+
+    if (!confirmar) return;
+
+    // ==========================================
+    // 1. Cambiar cliente en la lista local
+    // ==========================================
+
+    window.clientes = window.clientes.map(c =>
+        c === actual ? nuevo : c
+    );
+
+    // ==========================================
+    // 2. Cambiar cliente en todas sus ventas
+    // ==========================================
+
+    const ventasCliente = window.ventas.filter(
+        v => (v.cliente || '').trim().toUpperCase() === actual
+    );
+
+    ventasCliente.forEach(v => {
+        v.cliente = nuevo;
+    });
+
+    // ==========================================
+    // 3. Guardar LOCAL
+    // ==========================================
 
     guardarDatosLocal();
+
+    // ==========================================
+    // 4. Actualizar FIREBASE
+    // ==========================================
+
+    if (window.db && navigator.onLine) {
+
+        try {
+
+            // --------------------------------------
+            // Crear nuevo cliente en Firebase
+            // --------------------------------------
+
+            await window.db
+                .ref("clientes/" + nuevo)
+                .set(nuevo);
+
+            // --------------------------------------
+            // Eliminar nombre anterior
+            // --------------------------------------
+
+            await window.db
+                .ref("clientes/" + actual)
+                .remove();
+
+            // --------------------------------------
+            // Actualizar ventas del cliente
+            // --------------------------------------
+
+            for (const venta of ventasCliente) {
+
+                const idVenta =
+                    venta.firebaseId ||
+                    venta.uuid;
+
+                if (!idVenta) continue;
+
+                await window.db
+                    .ref("ventas")
+                    .child(idVenta)
+                    .update({
+                        cliente: nuevo
+                    });
+            }
+
+        } catch (e) {
+
+            console.error(
+                "Error actualizando cliente en Firebase:",
+                e
+            );
+
+            alert(
+                "El cliente fue actualizado localmente, " +
+                "pero ocurrió un problema al sincronizar con Firebase."
+            );
+        }
+    }
+
+    // ==========================================
+    // 5. Actualizar interfaz
+    // ==========================================
+
     actualizarDatalist();
     mostrarVentas();
 
-    alert(`Cliente actualizado a "${nuevo}".`);
-}
+      // Limpiar campos después de editar
+inputNuevo.value = "";
+select.value = "";
 
+    // ==========================================
+    // 6. Confirmación
+    // ==========================================
+
+    alert(
+        `Cliente actualizado correctamente.\n\n` +
+        `"${actual}" → "${nuevo}"\n\n` +
+        `Ventas actualizadas: ${ventasCliente.length}`
+    );
+}
 // ===============================
 // 🔥 ELIMINAR CLIENTE
 // ===============================
