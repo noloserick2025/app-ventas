@@ -122,6 +122,7 @@ width:100%;
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <!-- TU CONFIGURACION EXISTENTE -->
 <script src="firebase-config.js"></script>
@@ -129,129 +130,573 @@ width:100%;
 
 <script>
 
+// ======================================================
+// FIREBASE
+// ======================================================
+
 const db = firebase.database();
-const refEnvios = db.ref("envios");
 
-const contenedor = document.getElementById("listaEnvios");
+const contenedor =
+    document.getElementById("listaEnvios");
+
+let ventas = {};
+let estadosEnvio = {};
+
+let usuarioActual = null;
 
 
-refEnvios.on("value",(snapshot)=>{
+// ======================================================
+// COMPROBAR AUTENTICACIÓN
+// ======================================================
 
-contenedor.innerHTML="";
+firebase.auth().onAuthStateChanged(function(user) {
 
-snapshot.forEach((child)=>{
+    if (!user) {
 
-const data = child.val();
-const id = child.key;
+        console.log(
+            "ENVÍOS: no hay usuario autenticado."
+        );
 
-if(data.oculto) return;
+        contenedor.innerHTML =
+            "<p>No hay una sesión iniciada.</p>";
 
-let fechaTexto="";
+        return;
+    }
 
-if(data.fechaEnvio){
+    usuarioActual = user;
 
-fechaTexto = `
-<div class="fecha-enviado">
-Enviado el ${data.fechaEnvio}
-</div>
-`
+    console.log(
+        "ENVÍOS: usuario autenticado:",
+        user.email
+    );
 
-}
-
-const tarjeta = document.createElement("div");
-tarjeta.className="tarjeta-envio";
-
-tarjeta.innerHTML = `
-
-<div class="linea-envio">
-
-<div class="numero">
-
-<input type="checkbox"
-${data.check ? "checked":""}
-onchange="marcarCheck('${id}',this.checked)">
-
-#${data.numero || ""}
-
-</div>
-
-<div class="producto">
-${data.producto || ""}
-</div>
-
-<div class="acciones">
-
-<input type="date"
-value="${data.fechaEnvio || ""}"
-onchange="guardarFecha('${id}',this.value)">
-
-<button class="btn-enviar"
-onclick="marcarEnviado('${id}')">
-Enviar
-</button>
-
-<button class="btn-ocultar"
-onclick="ocultarEnvio('${id}')">
-X
-</button>
-
-</div>
-
-</div>
-
-${fechaTexto}
-
-`;
-
-contenedor.appendChild(tarjeta);
-
-});
+    iniciarEnvios();
 
 });
 
 
-function marcarCheck(id,estado){
+// ======================================================
+// INICIAR ENVÍOS
+// ======================================================
 
-db.ref("envios/"+id).update({
+function iniciarEnvios() {
 
-check:estado
+    const refVentas =
+        db.ref("ventas");
 
-});
+    const refEnvios =
+        db.ref("envios");
+
+
+    // ==============================================
+    // CARGAR VENTAS
+    // ==============================================
+
+    refVentas.on("value", snapshot => {
+
+        ventas =
+            snapshot.val() || {};
+
+        console.log(
+            "ENVÍOS: ventas cargadas:",
+            Object.keys(ventas).length
+        );
+
+        mostrarEnvios();
+
+    });
+
+
+    // ==============================================
+    // CARGAR ESTADOS DE ENVÍO
+    // ==============================================
+
+    refEnvios.on("value", snapshot => {
+
+        estadosEnvio =
+            snapshot.val() || {};
+
+        mostrarEnvios();
+
+    });
 
 }
 
 
-function guardarFecha(id,fecha){
+// ======================================================
+// MOSTRAR ENVÍOS
+// ======================================================
 
-db.ref("envios/"+id).update({
+// ======================================================
+// MOSTRAR ENVÍOS AGRUPADOS POR CLIENTE
+// ======================================================
 
-fechaEnvio:fecha
+function mostrarEnvios() {
 
-});
+    contenedor.innerHTML = "";
+
+    const clientes = {};
+
+
+    // ==================================================
+    // RECORRER VENTAS
+    // ==================================================
+
+    Object.keys(ventas).forEach(id => {
+
+        const data = ventas[id];
+
+        if (!data) return;
+
+
+        // ==================================================
+        // SOLO VENTAS MARCADAS PARA ENVÍO
+        // ==================================================
+
+        if (data.enviar !== true) return;
+
+
+        // ==================================================
+        // ESTADO PROPIO DE ENVÍOS
+        // ==================================================
+
+        const estado =
+            estadosEnvio[id] || {};
+
+
+        // Si está oculto, no mostrar
+        if (estado.oculto) return;
+
+
+        // ==================================================
+        // CLIENTE
+        // ==================================================
+
+        const cliente =
+            data.cliente || "Cliente sin nombre";
+
+
+        if (!clientes[cliente]) {
+            clientes[cliente] = [];
+        }
+
+
+        clientes[cliente].push({
+
+            id: id,
+
+            data: data,
+
+            estado: estado
+
+        });
+
+    });
+
+
+    // ==================================================
+    // SI NO HAY ENVÍOS
+    // ==================================================
+
+    if (Object.keys(clientes).length === 0) {
+
+        contenedor.innerHTML =
+            "<p>No hay productos marcados para envío.</p>";
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // ORDENAR CLIENTES
+    // ==================================================
+
+    const nombresClientes =
+        Object.keys(clientes).sort((a, b) =>
+            a.localeCompare(b, "es")
+        );
+
+
+    // ==================================================
+    // CREAR TARJETA POR CLIENTE
+    // ==================================================
+
+    nombresClientes.forEach(cliente => {
+
+        const tarjeta =
+            document.createElement("div");
+
+        tarjeta.className =
+            "tarjeta-envio";
+
+
+        // ==================================================
+        // NOMBRE DEL CLIENTE
+        // ==================================================
+
+        const titulo =
+            document.createElement("h3");
+
+        titulo.textContent =
+            cliente;
+
+        titulo.style.margin =
+            "0 0 10px 0";
+
+
+        tarjeta.appendChild(titulo);
+
+
+        // ==================================================
+        // ORDENAR PRODUCTOS POR FECHA
+        // MÁS RECIENTE PRIMERO
+        // ==================================================
+
+        clientes[cliente].sort((a, b) => {
+
+            const fechaA =
+                a.data.fecha || "";
+
+            const fechaB =
+                b.data.fecha || "";
+
+            return fechaB.localeCompare(fechaA);
+
+        });
+
+
+        // ==================================================
+        // CREAR CADA PRODUCTO
+        // ==================================================
+
+        clientes[cliente].forEach(item => {
+
+            const id =
+                item.id;
+
+            const data =
+                item.data;
+
+            const estado =
+                item.estado;
+
+
+            // ==================================================
+            // DATOS
+            // ==================================================
+
+            const numero =
+                data.correlativo ||
+                data.numero ||
+                "";
+
+            const producto =
+                data.producto ||
+                data.descripcion ||
+                data.detalle ||
+                "";
+
+            const fecha =
+                data.fecha ||
+                "";
+
+            const fechaEnvio =
+                estado.fechaEnvio ||
+                "";
+
+            const checked =
+                estado.check === true;
+
+
+            // ==================================================
+            // LÍNEA DEL PRODUCTO
+            // ==================================================
+
+            const linea =
+                document.createElement("div");
+
+            linea.className =
+                "linea-envio";
+
+
+            // ==================================================
+            // NÚMERO + CHECK
+            // ==================================================
+
+            const numeroDiv =
+                document.createElement("div");
+
+            numeroDiv.className =
+                "numero";
+
+
+            const checkbox =
+                document.createElement("input");
+
+            checkbox.type =
+                "checkbox";
+
+            checkbox.checked =
+                checked;
+
+            checkbox.onchange = () => {
+
+                marcarCheck(
+                    id,
+                    checkbox.checked
+                );
+
+            };
+
+
+            numeroDiv.appendChild(
+                checkbox
+            );
+
+
+            const numeroTexto =
+                document.createTextNode(
+                    ` #${numero}`
+                );
+
+            numeroDiv.appendChild(
+                numeroTexto
+            );
+
+
+            // ==================================================
+            // PRODUCTO
+            // ==================================================
+
+            const productoDiv =
+                document.createElement("div");
+
+            productoDiv.className =
+                "producto";
+
+            productoDiv.textContent =
+                producto;
+
+
+            // ==================================================
+            // FECHA DE LA VENTA
+            // ==================================================
+
+            const fechaDiv =
+                document.createElement("div");
+
+            fechaDiv.style.fontSize =
+                "12px";
+
+            fechaDiv.style.color =
+                "#666";
+
+            fechaDiv.textContent =
+                fecha;
+
+
+            // ==================================================
+            // ACCIONES
+            // ==================================================
+
+            const acciones =
+                document.createElement("div");
+
+            acciones.className =
+                "acciones";
+
+
+            // --------------------------------------------------
+            // FECHA DE ENVÍO
+            // --------------------------------------------------
+
+            const inputFecha =
+                document.createElement("input");
+
+            inputFecha.type =
+                "date";
+
+            inputFecha.value =
+                fechaEnvio;
+
+            inputFecha.onchange = () => {
+
+                guardarFecha(
+                    id,
+                    inputFecha.value
+                );
+
+            };
+
+
+            // --------------------------------------------------
+            // BOTÓN ENVIAR
+            // --------------------------------------------------
+
+            const btnEnviar =
+                document.createElement("button");
+
+            btnEnviar.className =
+                "btn-enviar";
+
+            btnEnviar.textContent =
+                "Enviar";
+
+            btnEnviar.onclick = () => {
+
+                marcarEnviado(id);
+
+            };
+
+
+            // --------------------------------------------------
+            // BOTÓN OCULTAR
+            // --------------------------------------------------
+
+            const btnOcultar =
+                document.createElement("button");
+
+            btnOcultar.className =
+                "btn-ocultar";
+
+            btnOcultar.textContent =
+                "X";
+
+            btnOcultar.onclick = () => {
+
+                ocultarEnvio(id);
+
+            };
+
+
+            acciones.append(
+                inputFecha,
+                btnEnviar,
+                btnOcultar
+            );
+
+
+            // ==================================================
+            // AGREGAR A LA LÍNEA
+            // ==================================================
+
+            linea.append(
+                numeroDiv,
+                productoDiv,
+                fechaDiv,
+                acciones
+            );
+
+
+            tarjeta.appendChild(
+                linea
+            );
+
+
+            // ==================================================
+            // FECHA ENVIADO
+            // ==================================================
+
+            if (fechaEnvio) {
+
+                const fechaEnviado =
+                    document.createElement("div");
+
+                fechaEnviado.className =
+                    "fecha-enviado";
+
+                fechaEnviado.textContent =
+                    `Enviado el ${fechaEnvio}`;
+
+                tarjeta.appendChild(
+                    fechaEnviado
+                );
+
+            }
+
+        });
+
+
+        // ==================================================
+        // AGREGAR TARJETA AL CONTENEDOR
+        // ==================================================
+
+        contenedor.appendChild(
+            tarjeta
+        );
+
+    });
 
 }
 
 
-function marcarEnviado(id){
+// ======================================================
+// MARCAR CHECK
+// ======================================================
 
-const hoy = new Date().toISOString().split("T")[0];
+function marcarCheck(id, estado) {
 
-db.ref("envios/"+id).update({
-
-fechaEnvio:hoy
-
-});
+    refEnvios
+        .child(id)
+        .update({
+            check: estado
+        });
 
 }
 
 
-function ocultarEnvio(id){
+// ======================================================
+// GUARDAR FECHA
+// ======================================================
 
-db.ref("envios/"+id).update({
+function guardarFecha(id, fecha) {
 
-oculto:true
+    refEnvios
+        .child(id)
+        .update({
+            fechaEnvio: fecha
+        });
 
-});
+}
+
+
+// ======================================================
+// MARCAR COMO ENVIADO
+// ======================================================
+
+function marcarEnviado(id) {
+
+    const hoy =
+        new Date()
+            .toISOString()
+            .split("T")[0];
+
+
+    refEnvios
+        .child(id)
+        .update({
+
+            fechaEnvio: hoy
+
+        });
+
+}
+
+
+// ======================================================
+// OCULTAR ENVÍO
+// ======================================================
+
+function ocultarEnvio(id) {
+
+    refEnvios
+        .child(id)
+        .update({
+
+            oculto: true
+
+        });
 
 }
 
