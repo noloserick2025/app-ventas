@@ -1536,18 +1536,102 @@ function mostrarVentas() {
       tarjeta.className = 'cliente-reporte';
 
       // ===== HEADER =====
-      const header = document.createElement('div');
-      header.style.display = 'flex';
-      header.style.justifyContent = 'space-between';
+      // ===== HEADER =====
+// ===== HEADER =====
+const header = document.createElement('div');
+header.style.display = 'flex';
+header.style.justifyContent = 'space-between';
+header.style.alignItems = 'center';
+header.style.flexWrap = 'nowrap';
 
-      const nombre = document.createElement('strong');
-      nombre.textContent = cliente;
+const nombre = document.createElement('strong');
+nombre.textContent = cliente;
+nombre.style.whiteSpace = 'nowrap';
 
-      const fechaDiv = document.createElement('span');
-      fechaDiv.textContent = `Fecha: ${fecha}`;
 
-      header.append(nombre, fechaDiv);
-      tarjeta.appendChild(header);
+// ===== CHECK ENVIAR =====
+const chkEnviar = document.createElement('input');
+chkEnviar.type = 'checkbox';
+chkEnviar.title = 'Enviar';
+chkEnviar.setAttribute('aria-label', 'Enviar ventas');
+
+const ventasClienteFecha =
+    agrupado[fecha][cliente];
+
+const enviarActivo =
+    ventasClienteFecha.some(
+        v => v.enviar === true
+    );
+
+chkEnviar.checked = enviarActivo;
+
+chkEnviar.onchange = async () => {
+
+    const nuevoEstado =
+        chkEnviar.checked;
+
+    console.log(
+        "CAMBIO ENVÍO:",
+        cliente,
+        fecha,
+        nuevoEstado
+    );
+
+    for (const venta of ventasClienteFecha) {
+
+        venta.enviar = nuevoEstado;
+
+        if (typeof guardarDatosLocal === 'function') {
+            guardarDatosLocal();
+        }
+
+        if (window.db && venta.firebaseId) {
+
+            try {
+
+                await window.db
+                    .ref("ventas")
+                    .child(venta.firebaseId)
+                    .update({
+                        enviar: nuevoEstado
+                    });
+
+                console.log(
+                    "GUARDADO EN FIREBASE:",
+                    venta.firebaseId,
+                    nuevoEstado
+                );
+
+            } catch (e) {
+
+                console.error(
+                    "Error guardando estado de envío:",
+                    e
+                );
+
+            }
+
+        }
+
+    }
+
+};
+
+
+// ===== FECHA =====
+const fechaDiv = document.createElement('span');
+fechaDiv.textContent = `Fecha: ${fecha}`;
+fechaDiv.style.whiteSpace = 'nowrap';
+
+
+// ===== HEADER =====
+header.append(
+    nombre,
+    chkEnviar,
+    fechaDiv
+);
+
+tarjeta.appendChild(header);
 
       let totalCliente = 0;
 
