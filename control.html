@@ -375,9 +375,16 @@ function cerrarModal() {
     deudaActual = 0;
 }
 
+// ======================================================
+// GUARDAR ABONO
+// ======================================================
 async function guardarAbono() {
-    const input = document.getElementById("monto-abono");
-    let monto = Number(input.value);
+
+    const input =
+        document.getElementById("monto-abono");
+
+    const monto =
+        Number(input.value);
 
     if (monto <= 0) {
         alert("Monto inválido");
@@ -389,24 +396,114 @@ async function guardarAbono() {
         return;
     }
 
-    const clave = keyPago(clienteSeleccionado, fechaSeleccionada);
+    const clave =
+        keyPago(
+            clienteSeleccionado,
+            fechaSeleccionada
+        );
 
     try {
-        await db.ref("abonos").child(clave).push({
-            monto,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
+
+        // ==============================================
+        // GUARDAR EL ABONO
+        // ==============================================
+
+        await db
+            .ref("abonos")
+            .child(clave)
+            .push({
+                monto: monto,
+                timestamp:
+                    firebase.database.ServerValue.TIMESTAMP
+            });
+
+        // ==============================================
+        // CALCULAR CUÁNTO SE HA ABONADO EN TOTAL
+        // ==============================================
+
+        const snap =
+            await db
+                .ref("abonos")
+                .child(clave)
+                .once("value");
+
+        const datosAbonos =
+            snap.val() || {};
+
+        const totalAbonado =
+            Object.values(datosAbonos)
+                .reduce(
+                    (total, abono) =>
+                        total +
+                        Number(abono.monto || 0),
+                    0
+                );
+
+        // ==============================================
+        // CALCULAR DEUDA REAL DE LA FECHA
+        // ==============================================
+
+        const ventasFecha =
+            ventas.filter(v =>
+                v.cliente === clienteSeleccionado &&
+                v.fecha === fechaSeleccionada
+            );
+
+        let totalVentas = 0;
+
+        ventasFecha.forEach(v => {
+
+            totalVentas +=
+                Number(v.valor || 0);
+
         });
 
-        const nuevaDeuda = deudaActual - monto;
-        if (nuevaDeuda <= 0) {
-            await db.ref("pagos").child(clave).set(true);
+        const deudaReal =
+            Math.max(
+                0,
+                totalVentas - totalAbonado
+            );
+
+        // ==============================================
+        // SI EL ABONO CUBRE TODA LA DEUDA
+        // MARCAMOS TODAS LAS VENTAS COMO PAGADAS
+        // ==============================================
+
+        if (deudaReal <= 0) {
+
+            for (const venta of ventasFecha) {
+
+                if (!venta.firebaseId) continue;
+
+                await db
+                    .ref("ventas")
+                    .child(venta.firebaseId)
+                    .update({
+                        pagada: true
+                    });
+            }
+
+            // Compatibilidad con sistema antiguo
+            await db
+                .ref("pagos")
+                .child(clave)
+                .set(true);
+
         }
 
-    } catch (e) {
-        console.error(e);
-    }
+        cerrarModal();
 
-    cerrarModal();
+    } catch (e) {
+
+        console.error(
+            "Error guardando abono:",
+            e
+        );
+
+        alert(
+            "No fue posible guardar el abono."
+        );
+    }
 }
 
 // ======================================================
@@ -442,12 +539,82 @@ function cargarDatos() {
 // ======================================================
 // ACCIONES
 // ======================================================
+// ======================================================
+// MARCAR TODAS LAS VENTAS DE UNA FECHA COMO PAGADAS
+// ======================================================
 async function marcarPago(clave) {
-    await db.ref("pagos").child(clave).set(true);
+
+    const grupo = ventas.filter(v =>
+        keyPago(v.cliente, v.fecha) === clave
+    );
+
+    if (!grupo.length) return;
+
+    try {
+
+        for (const v of grupo) {
+
+            if (!v.firebaseId) continue;
+
+            await db
+                .ref("ventas")
+                .child(v.firebaseId)
+                .update({
+                    pagada: true
+                });
+        }
+
+        // Se mantiene también el pago global
+        // para compatibilidad con datos antiguos
+        await db.ref("pagos").child(clave).set(true);
+
+    } catch (e) {
+
+        console.error(
+            "Error marcando ventas como pagadas:",
+            e
+        );
+
+    }
 }
 
+
+// ======================================================
+// REVERTIR TODAS LAS VENTAS DE UNA FECHA
+// ======================================================
 async function revertirPago(clave) {
-    await db.ref("pagos").child(clave).remove();
+
+    const grupo = ventas.filter(v =>
+        keyPago(v.cliente, v.fecha) === clave
+    );
+
+    if (!grupo.length) return;
+
+    try {
+
+        for (const v of grupo) {
+
+            if (!v.firebaseId) continue;
+
+            await db
+                .ref("ventas")
+                .child(v.firebaseId)
+                .update({
+                    pagada: false
+                });
+        }
+
+        // También eliminamos el pago global antiguo
+        await db.ref("pagos").child(clave).remove();
+
+    } catch (e) {
+
+        console.error(
+            "Error revirtiendo pagos:",
+            e
+        );
+
+    }
 }
 
 function abrirModalAbono(cliente, fecha, deuda) {
@@ -520,47 +687,102 @@ function refrescarTodo() {
         if (!clientes[v.cliente]) clientes[v.cliente] = [];
         clientes[v.cliente].push(v);
     });
+// ===========================
+// RESUMEN GLOBAL
+// ===========================
 
-    // ===========================
-    // RESUMEN GLOBAL (CORREGIDO)
-    // ===========================
-    let globalTotal = 0;
-    let globalPagado = 0;
-    let globalDeuda = 0;
+let globalTotal = 0;
+let globalPagado = 0;
+let globalDeuda = 0;
 
-    Object.keys(clientes).forEach(cliente => {
+Object.keys(clientes).forEach(cliente => {
+
     const grupo = clientes[cliente];
 
-    // Fechas únicas
-    const fechas = [...new Set(grupo.map(v => v.fecha))];
+    const fechasCliente = [
+        ...new Set(
+            grupo.map(v => v.fecha)
+        )
+    ];
 
-    fechas.forEach(fecha => {
+    fechasCliente.forEach(fecha => {
 
-        const clave = keyPago(cliente, fecha);
+        const clave =
+            keyPago(cliente, fecha);
 
-        // Total del día
-        const totalDia = grupo
-            .filter(v => v.fecha === fecha)
-            .reduce((s, v) => s + Number(v.valor), 0);
+        const ventasFecha =
+            grupo.filter(
+                v => v.fecha === fecha
+            );
 
-        // Abonos aplicados
-        const totalAbonos = abonos[clave]
-            ? Object.values(abonos[clave]).reduce((s, a) => s + Number(a.monto), 0)
-            : 0;
+        let totalDia = 0;
+        let pagadoProductos = 0;
+        let pendienteProductos = 0;
 
-        // Si está pagado → lo pagado es igual al total
-        const pagadoDia = pagos[clave] ? totalDia : totalAbonos;
+        // ----------------------------------------------
+        // CALCULAR VENTAS
+        // ----------------------------------------------
 
-        // Deuda real
-        const deuda = totalDia - pagadoDia;
+        ventasFecha.forEach(v => {
+
+            const valor =
+                Number(v.valor) || 0;
+
+            totalDia += valor;
+
+            if (v.pagada === true) {
+
+                pagadoProductos += valor;
+
+            } else {
+
+                pendienteProductos += valor;
+
+            }
+
+        });
+
+        // ----------------------------------------------
+        // ABONOS
+        // ----------------------------------------------
+
+        const totalAbonos =
+            abonos[clave]
+                ? Object.values(abonos[clave])
+                    .reduce(
+                        (s, a) =>
+                            s + Number(a.monto || 0),
+                        0
+                    )
+                : 0;
+
+        // ----------------------------------------------
+        // ABONO SOLO PUEDE CUBRIR DEUDA PENDIENTE
+        // ----------------------------------------------
+
+        const abonoAplicado =
+            Math.min(
+                totalAbonos,
+                pendienteProductos
+            );
+
+        const pagadoDia =
+            pagadoProductos +
+            abonoAplicado;
+
+        const deudaDia =
+            Math.max(
+                0,
+                totalDia - pagadoDia
+            );
 
         globalTotal += totalDia;
         globalPagado += pagadoDia;
-        globalDeuda += deuda;
-        });
-        });
+        globalDeuda += deudaDia;
 
+    });
 
+});
         resumenGlobal.innerHTML = `
         <div><strong>TOTAL MES:</strong> ${formatMoney(globalTotal)}</div>
         <div><strong>PAGADO:</strong> <span style="color:#4caf50">${formatMoney(globalPagado)}</span></div>
@@ -586,44 +808,135 @@ function refrescarTodo() {
 
        fechas.forEach(fecha => {
 
-       const clave = keyPago(cliente, fecha);
+           const clave = keyPago(cliente, fecha);
 
-       const totalDia = ventasCliente
-        .filter(v => v.fecha === fecha)
-        .reduce((s, v) => s + Number(v.valor), 0);
+           const ventasDelDia = ventasCliente.filter(
+               v => v.fecha === fecha
+           );
 
-        const totalAbonos = abonos[clave]
-        ? Object.values(abonos[clave]).reduce((s, a) => s + Number(a.monto), 0)
-        : 0;
+           const totalDia = ventasDelDia.reduce(
+               (s, v) => s + Number(v.valor || 0),
+               0
+           );
 
-       // igual que en el global:
-       const pagadoDia = pagos[clave] ? totalDia : totalAbonos;
-        const deudaDia = totalDia - pagadoDia;
-  
-       totalCliente += totalDia;
-       pagadoCliente += pagadoDia;
-       deudaCliente += deudaDia;
+           let pagadoDia = 0;
+           let deudaDia = 0;
 
-       const linea = document.createElement("div");
-       linea.className = "linea-venta";
-       if (pagos[clave]) linea.classList.add("pagado");
+           // ======================================================
+           // CALCULAR PAGO PRODUCTO POR PRODUCTO
+           // ======================================================
 
-      linea.innerHTML = `
-       <span>${fecha}</span>
-        <span class="valor-total">${formatMoney(totalDia)}</span>
-        <span class="valor-pagado">${formatMoney(pagadoDia)}</span>
-        <span class="valor-deuda">${formatMoney(deudaDia)}</span>
+           // ======================================================
+// CALCULAR PAGOS DE LOS PRODUCTOS
+// ======================================================
 
-        <button class="btn-icon" title="Pagar" onclick="marcarPago('${clave}')">✔️</button>
-        <button class="btn-icon" title="Revertir pago" onclick="revertirPago('${clave}')">↩️</button>
-        <button class="btn-icon" title="Abonar" onclick="abrirModalAbono('${cliente}','${fecha}',${deudaDia})">💰</button>
-        <button class="btn-icon" title="Revertir abonos" onclick="revertirAbono('${clave}')">⛔</button>
-        <button class="btn-icon" title="Eliminar fecha" onclick="eliminarGrupo('${cliente}','${fecha}')">🗑️</button>
-        `;
+let totalPagadoProductos = 0;
+let totalPendienteProductos = 0;
 
-        tarjeta.appendChild(linea);
-        });
+// ------------------------------------------------------
+// PRIMERO: PRODUCTOS PAGADOS COMPLETAMENTE
+// ------------------------------------------------------
 
+ventasDelDia.forEach(v => {
+
+    const valor = Number(v.valor) || 0;
+
+    if (v.pagada === true) {
+
+        totalPagadoProductos += valor;
+
+    } else {
+
+        totalPendienteProductos += valor;
+
+    }
+
+});
+
+
+// ======================================================
+// OBTENER ABONOS DE LA FECHA
+// ======================================================
+
+const totalAbonosFecha = abonos[clave]
+    ? Object.values(abonos[clave]).reduce(
+        (s, a) => s + Number(a.monto || 0),
+        0
+      )
+    : 0;
+
+
+// ======================================================
+// LOS ABONOS SE SUMAN A LO YA PAGADO
+// ======================================================
+
+const pagadoConAbonos =
+    Math.min(
+        totalPendienteProductos,
+        totalAbonosFecha
+    );
+
+
+// ======================================================
+// TOTAL PAGADO
+// ======================================================
+
+pagadoDia =
+    totalPagadoProductos +
+    pagadoConAbonos;
+
+
+// ======================================================
+// DEUDA REAL
+// ======================================================
+
+deudaDia =
+    Math.max(
+        0,
+        totalDia - pagadoDia
+    );
+           // ======================================================
+           // ACUMULAR TOTALES DEL CLIENTE
+           // ======================================================
+
+           totalCliente += totalDia;
+           pagadoCliente += pagadoDia;
+           deudaCliente += deudaDia;
+
+           // ======================================================
+           // MANTENER EXACTAMENTE LA LÍNEA VISUAL ACTUAL
+           // ======================================================
+
+           const linea = document.createElement("div");
+
+           linea.className = "linea-venta";
+
+           // La línea se marca como pagada solamente
+           // cuando TODOS sus productos están pagados.
+           const todosPagados =
+               ventasDelDia.length > 0 &&
+               ventasDelDia.every(v => v.pagada === true);
+
+           if (todosPagados) {
+               linea.classList.add("pagado");
+           }
+
+           linea.innerHTML = `
+           <span>${fecha}</span>
+            <span class="valor-total">${formatMoney(totalDia)}</span>
+            <span class="valor-pagado">${formatMoney(pagadoDia)}</span>
+            <span class="valor-deuda">${formatMoney(deudaDia)}</span>
+
+            <button class="btn-icon" title="Pagar" onclick="marcarPago('${clave}')">✔️</button>
+            <button class="btn-icon" title="Revertir pago" onclick="revertirPago('${clave}')">↩️</button>
+            <button class="btn-icon" title="Abonar" onclick="abrirModalAbono('${cliente}','${fecha}',${deudaDia})">💰</button>
+            <button class="btn-icon" title="Revertir abonos" onclick="revertirAbono('${clave}')">⛔</button>
+            <button class="btn-icon" title="Eliminar fecha" onclick="eliminarGrupo('${cliente}','${fecha}')">🗑️</button>
+            `;
+
+           tarjeta.appendChild(linea);
+
+       });
 
         // RESUMEN CLIENTE
        const resumen = document.createElement("div");
