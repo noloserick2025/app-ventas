@@ -182,7 +182,7 @@ body {
 }
 
 .valor-deuda {
-    color: var(--rojo);
+    color: var(--amarillo);
     font-weight: bold;
 }
 
@@ -306,6 +306,12 @@ body {
 
 <!-- FILTROS SUPERIORES -->
 <div class="filtros">
+
+    <label>Cliente:</label>
+    <select id="selector-cliente" class="select">
+        <option value="todos">Todos</option>
+    </select>
+
     <label>Mes:</label>
     <select id="selector-mes" class="select">
         <option value="todos">Todos</option>
@@ -325,6 +331,7 @@ body {
 
     <label>Año:</label>
     <select id="selector-ano" class="select"></select>
+
 </div>
 
 <!-- RESUMEN GLOBAL -->
@@ -517,11 +524,24 @@ function verificarCarga() {
 
 function cargarDatos() {
     db.ref("ventas").on("value", snap => {
-        const data = snap.val() || {};
-        ventas = Object.keys(data).map(id => ({ ...data[id], firebaseId: id }));
-        listeners.ventas = true;
-        verificarCarga();
-    });
+
+    const data = snap.val() || {};
+
+    ventas = Object.keys(data).map(
+        id => ({
+            ...data[id],
+            firebaseId: id
+        })
+    );
+
+    // Actualizar selector de clientes
+    cargarSelectorClientes();
+
+    listeners.ventas = true;
+
+    verificarCarga();
+
+});
 
     db.ref("pagos").on("value", snap => {
         pagos = snap.val() || {};
@@ -664,17 +684,46 @@ function refrescarTodo() {
         return;
     }
 
-    const mesSel = document.getElementById("selector-mes").value;
-    const anoSel = Number(document.getElementById("selector-ano").value);
+    const clienteSel =
+    document.getElementById("selector-cliente").value;
 
-    // FILTRAR POR MES/AÑO
+const mesSel =
+    document.getElementById("selector-mes").value;
+
+const anoSel =
+    Number(document.getElementById("selector-ano").value);
+
     const ventasFiltradas = ventas.filter(v => {
-        const partes = v.fecha.split("-");  // ["2025","12","01"]
-     const f = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
 
-        if (mesSel !== "todos" && f.getMonth() != Number(mesSel)) return false;
-        return f.getFullYear() === anoSel;
-    });
+    // FILTRO CLIENTE
+    if (
+        clienteSel !== "todos" &&
+        v.cliente !== clienteSel
+    ) {
+        return false;
+    }
+
+    // FILTRO FECHA
+    const partes = v.fecha.split("-");
+
+    const f = new Date(
+        Number(partes[0]),
+        Number(partes[1]) - 1,
+        Number(partes[2])
+    );
+
+    // FILTRO MES
+    if (
+        mesSel !== "todos" &&
+        f.getMonth() !== Number(mesSel)
+    ) {
+        return false;
+    }
+
+    // FILTRO AÑO
+    return f.getFullYear() === anoSel;
+
+});
 
     if (ventasFiltradas.length === 0) {
         cont.innerHTML = "<p>No hay ventas en este período.</p>";
@@ -944,7 +993,7 @@ deudaDia =
       resumen.innerHTML = `
     <span><strong>Total:</strong> ${formatMoney(totalCliente)}</span>
     <span style="color:#1a7f1a"><strong>Pagado:</strong> ${formatMoney(pagadoCliente)}</span>
-    <span style="color:#b30000"><strong>Adeudado:</strong> ${formatMoney(deudaCliente)}</span>
+    <span style="color:#CCA90E"><strong>Adeudado:</strong> ${formatMoney(deudaCliente)}</span>
 `  ;
    tarjeta.appendChild(resumen);
 
@@ -966,7 +1015,44 @@ cont.appendChild(tarjeta);
 
     });
 }
+// ======================================================
+// CARGAR SELECTOR DE CLIENTES
+// ======================================================
+function cargarSelectorClientes() {
 
+    const selector =
+        document.getElementById("selector-cliente");
+
+    if (!selector) return;
+
+    // Mantener solamente "Todos"
+    selector.innerHTML =
+        '<option value="todos">Todos</option>';
+
+    const clientes = [
+        ...new Set(
+            ventas
+                .map(v => v.cliente)
+                .filter(cliente => cliente)
+        )
+    ].sort((a, b) =>
+        a.localeCompare(b, "es", {
+            sensitivity: "base"
+        })
+    );
+
+    clientes.forEach(cliente => {
+
+        const option =
+            document.createElement("option");
+
+        option.value = cliente;
+        option.textContent = cliente;
+
+        selector.appendChild(option);
+
+    });
+}
 // ======================================================
 // INICIALIZACIÓN
 // ======================================================
@@ -983,7 +1069,9 @@ window.onload = function() {
     }
 
     cargarDatos();
+    
 
+    document.getElementById("selector-cliente").addEventListener("change", refrescarTodo);
     document.getElementById("selector-mes").addEventListener("change", refrescarTodo);
     document.getElementById("selector-ano").addEventListener("change", refrescarTodo);
 
