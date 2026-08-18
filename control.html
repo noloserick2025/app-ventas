@@ -765,8 +765,10 @@ Object.keys(clientes).forEach(cliente => {
             );
 
         let totalDia = 0;
-        let pagadoProductos = 0;
-        let pendienteProductos = 0;
+let pagadoProductos = 0;
+let pendienteProductos = 0;
+let pagadoDia = 0;
+let deudaDia = 0;
 
         // ----------------------------------------------
         // CALCULAR VENTAS
@@ -809,21 +811,53 @@ Object.keys(clientes).forEach(cliente => {
         // ABONO SOLO PUEDE CUBRIR DEUDA PENDIENTE
         // ----------------------------------------------
 
-        const abonoAplicado =
-            Math.min(
-                totalAbonos,
-                pendienteProductos
-            );
+      // ======================================================
+// COMPROBAR PAGO TOTAL DE LA FECHA
+// ======================================================
 
-        const pagadoDia =
-            pagadoProductos +
-            abonoAplicado;
+if (pagos[clave] === true) {
 
-        const deudaDia =
-            Math.max(
-                0,
-                totalDia - pagadoDia
-            );
+    // El registro antiguo de "pagos" indica
+    // que toda la fecha está pagada.
+    pagadoDia = totalDia;
+    deudaDia = 0;
+
+} else {
+
+    // ==================================================
+    // ABONOS
+    // ==================================================
+
+    const totalAbonos =
+        abonos[clave]
+            ? Object.values(abonos[clave])
+                .reduce(
+                    (s, a) =>
+                        s + Number(a.monto || 0),
+                    0
+                )
+            : 0;
+
+    // ==================================================
+    // EL ABONO SOLO CUBRE PRODUCTOS PENDIENTES
+    // ==================================================
+
+    const abonoAplicado =
+        Math.min(
+            totalAbonos,
+            pendienteProductos
+        );
+
+    pagadoDia =
+        pagadoProductos +
+        abonoAplicado;
+
+    deudaDia =
+        Math.max(
+            0,
+            totalDia - pagadoDia
+        );
+}  
 
         globalTotal += totalDia;
         globalPagado += pagadoDia;
@@ -907,43 +941,60 @@ ventasDelDia.forEach(v => {
 // OBTENER ABONOS DE LA FECHA
 // ======================================================
 
-const totalAbonosFecha = abonos[clave]
-    ? Object.values(abonos[clave]).reduce(
-        (s, a) => s + Number(a.monto || 0),
-        0
-      )
-    : 0;
-
-
 // ======================================================
-// LOS ABONOS SE SUMAN A LO YA PAGADO
+// COMPROBAR SI LA FECHA ESTÁ PAGADA COMPLETAMENTE
 // ======================================================
 
-const pagadoConAbonos =
-    Math.min(
-        totalPendienteProductos,
-        totalAbonosFecha
-    );
+if (pagos[clave] === true) {
 
+    // Compatible con los pagos antiguos
+    // guardados en Firebase.
+    pagadoDia = totalDia;
+    deudaDia = 0;
 
-// ======================================================
-// TOTAL PAGADO
-// ======================================================
+} else {
 
-pagadoDia =
-    totalPagadoProductos +
-    pagadoConAbonos;
+    // ==================================================
+    // OBTENER ABONOS DE LA FECHA
+    // ==================================================
 
+    const totalAbonosFecha =
+        abonos[clave]
+            ? Object.values(abonos[clave]).reduce(
+                (s, a) =>
+                    s + Number(a.monto || 0),
+                0
+              )
+            : 0;
 
-// ======================================================
-// DEUDA REAL
-// ======================================================
+    // ==================================================
+    // ABONOS SOLO CUBREN DEUDA PENDIENTE
+    // ==================================================
 
-deudaDia =
-    Math.max(
-        0,
-        totalDia - pagadoDia
-    );
+    const pagadoConAbonos =
+        Math.min(
+            totalPendienteProductos,
+            totalAbonosFecha
+        );
+
+    // ==================================================
+    // TOTAL PAGADO
+    // ==================================================
+
+    pagadoDia =
+        totalPagadoProductos +
+        pagadoConAbonos;
+
+    // ==================================================
+    // DEUDA REAL
+    // ==================================================
+
+    deudaDia =
+        Math.max(
+            0,
+            totalDia - pagadoDia
+        );
+}
            // ======================================================
            // ACUMULAR TOTALES DEL CLIENTE
            // ======================================================
@@ -963,12 +1014,15 @@ deudaDia =
            // La línea se marca como pagada solamente
            // cuando TODOS sus productos están pagados.
            const todosPagados =
-               ventasDelDia.length > 0 &&
-               ventasDelDia.every(v => v.pagada === true);
+    pagos[clave] === true ||
+    (
+        ventasDelDia.length > 0 &&
+        ventasDelDia.every(v => v.pagada === true)
+    );
 
-           if (todosPagados) {
-               linea.classList.add("pagado");
-           }
+if (todosPagados) {
+    linea.classList.add("pagado");
+}
 
            linea.innerHTML = `
            <span>${fecha}</span>
