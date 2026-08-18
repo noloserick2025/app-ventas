@@ -10,100 +10,380 @@
 <style>
 
 body{
-font-family:Arial;
-background:#f2f4f8;
-margin:0;
-padding:10px;
+    font-family:Arial, sans-serif;
+    background:#eef2f6;
+    margin:0;
+    padding:15px;
+    color:#2c3e50;
 }
 
 h2{
-text-align:center;
-margin-bottom:15px;
+    text-align:center;
+    margin:5px 0 18px 0;
+    color:#2c3e50;
 }
+
+
+/* ======================================================
+   CONTENEDOR GENERAL
+   ====================================================== */
 
 #listaEnvios{
-display:flex;
-flex-direction:column;
-gap:10px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
 }
+
+
+/* ======================================================
+   TARJETA DEL CLIENTE
+   ====================================================== */
 
 .tarjeta-envio{
-background:white;
-border-radius:10px;
-padding:10px;
-box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    background:#ffffff;
+    border-radius:12px;
+    padding:12px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.10);
+    border:1px solid #dfe5eb;
 }
+
+
+/* ======================================================
+   TITULO CLIENTE
+   ====================================================== */
+
+.tarjeta-envio h3{
+    font-size:18px;
+    font-weight:bold;
+    margin:0 0 12px 0 !important;
+    padding:10px 12px !important;
+
+    background:#e5eef7 !important;
+
+    color:#24445f !important;
+
+    border-radius:8px;
+
+    border-left:5px solid #3498db;
+}
+
+
+/* ======================================================
+   TARJETA DE CADA FECHA
+   ====================================================== */
+
+.tarjeta-envio > div{
+    box-sizing:border-box;
+}
+
+
+
+
+
+/* ======================================================
+   ENCABEZADO FECHA
+   ====================================================== */
+
+.tarjeta-envio div[style*="background"] > div:first-child{
+    background:#edf3f8;
+
+    padding:7px 9px;
+
+    border-radius:6px;
+
+    margin-bottom:8px !important;
+
+    color:#34495e !important;
+
+    font-size:14px;
+}
+
+
+/* ======================================================
+   LÍNEA DE PRODUCTO
+   ====================================================== */
 
 .linea-envio{
-display:flex;
-flex-wrap:wrap;
-align-items:center;
-gap:6px;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+
+    min-height:42px;
+    box-sizing:border-box;
+
+    padding:7px !important;
+    margin-bottom:6px;
+
+    border-radius:8px;
+
+    background:#ffffff !important;
+    border:1px solid #eeeeee !important;
+
+    transition:
+        background 0.2s ease,
+        border 0.2s ease,
+        transform 0.15s ease;
 }
+
+.linea-envio.linea-marcada{
+    background:#41cc4c !important;
+    border:1px solid #1a7730 !important;
+}
+
+
+/* ======================================================
+   EFECTO AL PASAR EL MOUSE
+   ====================================================== */
+
+.linea-envio:hover{
+    transform:translateY(-1px);
+}
+
+
+/* ======================================================
+   NÚMERO + CHECK
+   ====================================================== */
 
 .numero{
-font-weight:bold;
-display:flex;
-align-items:center;
-gap:4px;
-color:#2c3e50;
+    font-weight:bold;
+
+    display:flex;
+    align-items:center;
+
+    gap:5px;
+
+    color:#2c3e50;
+
+    min-width:65px;
 }
+
+
+/* ======================================================
+   CHECK
+   ====================================================== */
+
+.numero input[type="checkbox"]{
+    width:18px;
+    height:18px;
+
+    cursor:pointer;
+
+    accent-color:#27ae60;
+}
+
+
+/* ======================================================
+   PRODUCTO
+   ====================================================== */
 
 .producto{
-flex:1;
-font-size:14px;
+    flex:1;
+
+    font-size:14px;
+
+    font-weight:500;
+
+    min-width:140px;
+
+    color:#34495e;
 }
+
+
+/* ======================================================
+   ACCIONES
+   ====================================================== */
 
 .acciones{
-display:flex;
-gap:4px;
-flex-wrap:wrap;
+    display:flex;
+
+    align-items:center;
+
+    gap:5px;
+
+    flex-wrap:wrap;
 }
+
+
+/* ======================================================
+   BOTONES
+   ====================================================== */
 
 button{
-border:none;
-padding:5px 8px;
-border-radius:6px;
-font-size:12px;
-cursor:pointer;
+    border:none;
+
+    padding:6px 9px;
+
+    border-radius:6px;
+
+    font-size:12px;
+
+    cursor:pointer;
+
+    transition:
+        transform 0.15s ease,
+        opacity 0.15s ease;
 }
 
+button:hover{
+    transform:scale(1.04);
+}
+
+button:active{
+    transform:scale(0.97);
+}
+
+
+/* ======================================================
+   BOTÓN ENVIAR
+   ====================================================== */
+
 .btn-enviar{
-background:#3498db;
-color:white;
+    background:#3498db;
+
+    color:white;
 }
 
 .btn-enviar:hover{
-background:#2980b9;
+    background:#2980b9;
 }
+
+
+/* ======================================================
+   BOTÓN OCULTAR
+   ====================================================== */
 
 .btn-ocultar{
-background:#e74c3c;
-color:white;
+    background:#e74c3c;
+
+    color:white;
+
+    font-weight:bold;
 }
+
+.btn-ocultar:hover{
+    background:#c0392b;
+}
+
+
+/* ======================================================
+   FECHA DE ENVÍO
+   ====================================================== */
+
+input[type="date"]{
+    font-size:12px;
+
+    padding:5px;
+
+    border:1px solid #ccd6df;
+
+    border-radius:6px;
+
+    background:white;
+
+    color:#34495e;
+}
+
+
+/* ======================================================
+   TEXTO "ENVIADO EL..."
+   ====================================================== */
 
 .fecha-enviado{
-margin-top:5px;
-font-size:12px;
-color:#27ae60;
-font-weight:bold;
+    margin-top:5px;
+
+    margin-bottom:5px;
+
+    padding:5px 8px;
+
+    font-size:12px;
+
+    color:#1e8449;
+
+    background:#eaf7ee;
+
+    border-radius:5px;
+
+    font-weight:bold;
 }
 
-input[type=date]{
-font-size:12px;
-padding:3px;
+
+/* ======================================================
+   MENSAJE SIN ENVÍOS
+   ====================================================== */
+
+#listaEnvios > p{
+    text-align:center;
+
+    background:white;
+
+    padding:20px;
+
+    border-radius:10px;
+
+    color:#7f8c8d;
+
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
 }
+
+
+/* ======================================================
+   CELULAR
+   ====================================================== */
 
 @media(max-width:600px){
 
-.linea-envio{
-flex-direction:column;
-align-items:flex-start;
-}
+    body{
+        padding:10px;
+    }
 
-.acciones{
-width:100%;
-}
+    .tarjeta-envio{
+        padding:9px;
+    }
+
+    .tarjeta-envio h3{
+        font-size:16px;
+    }
+
+    .linea-envio{
+        flex-direction:row;
+
+        align-items:center;
+
+        gap:6px;
+
+        padding:7px !important;
+    }
+
+    .numero{
+        min-width:58px;
+    }
+
+    .producto{
+        flex:1;
+
+        min-width:100px;
+
+        font-size:13px;
+    }
+
+    .acciones{
+        width:100%;
+
+        margin-top:4px;
+
+        padding-left:2px;
+    }
+
+    .acciones input[type="date"]{
+        flex:1;
+
+        min-width:120px;
+    }
+
+    .acciones button{
+        flex:0 0 auto;
+    }
 
 }
 
@@ -112,8 +392,15 @@ width:100%;
 </head>
 
 <body>
+<nav style="display: flex; justify-content: space-between; font: size 50px; align-items: center; background: #86b6e6; color: white; padding: 10px 25px; height: 50px;">
+    <div class="nav-links" style="display: flex; gap: 40px; ">
+        <a href="index.html">VENTAS</a>
+        <a href="control.html">CONTROL</a>
+        
+    </div>
+</nav>
+    <h1>📦 Envios</h1>
 
-<h2>📦 Envios</h2>
 
 <div id="listaEnvios"></div>
 
@@ -138,6 +425,9 @@ const db = firebase.database();
 
 const contenedor =
     document.getElementById("listaEnvios");
+
+const refEnvios =
+    db.ref("envios");
 
 let ventas = {};
 let estadosEnvio = {};
@@ -184,8 +474,7 @@ function iniciarEnvios() {
     const refVentas =
         db.ref("ventas");
 
-    const refEnvios =
-        db.ref("envios");
+   
 
 
     // ==============================================
@@ -239,7 +528,7 @@ function mostrarEnvios() {
 
 
     // ==================================================
-    // RECORRER VENTAS
+    // AGRUPAR VENTAS POR CLIENTE
     // ==================================================
 
     Object.keys(ventas).forEach(id => {
@@ -248,54 +537,32 @@ function mostrarEnvios() {
 
         if (!data) return;
 
-
-        // ==================================================
-        // SOLO VENTAS MARCADAS PARA ENVÍO
-        // ==================================================
-
+        // Solo ventas marcadas para envío desde INDEX
         if (data.enviar !== true) return;
 
+        const estado = estadosEnvio[id] || {};
 
-        // ==================================================
-        // ESTADO PROPIO DE ENVÍOS
-        // ==================================================
-
-        const estado =
-            estadosEnvio[id] || {};
-
-
-        // Si está oculto, no mostrar
+        // Si está oculto no mostrar
         if (estado.oculto) return;
-
-
-        // ==================================================
-        // CLIENTE
-        // ==================================================
 
         const cliente =
             data.cliente || "Cliente sin nombre";
-
 
         if (!clientes[cliente]) {
             clientes[cliente] = [];
         }
 
-
         clientes[cliente].push({
-
-            id: id,
-
-            data: data,
-
-            estado: estado
-
+            id,
+            data,
+            estado
         });
 
     });
 
 
     // ==================================================
-    // SI NO HAY ENVÍOS
+    // SIN ENVÍOS
     // ==================================================
 
     if (Object.keys(clientes).length === 0) {
@@ -304,7 +571,6 @@ function mostrarEnvios() {
             "<p>No hay productos marcados para envío.</p>";
 
         return;
-
     }
 
 
@@ -319,329 +585,439 @@ function mostrarEnvios() {
 
 
     // ==================================================
-    // CREAR TARJETA POR CLIENTE
+    // TARJETA PRINCIPAL DEL CLIENTE
     // ==================================================
 
     nombresClientes.forEach(cliente => {
 
-        const tarjeta =
+        const tarjetaCliente =
             document.createElement("div");
 
-        tarjeta.className =
+        tarjetaCliente.className =
             "tarjeta-envio";
 
 
         // ==================================================
-        // NOMBRE DEL CLIENTE
+        // ENCABEZADO CLIENTE
         // ==================================================
 
-        const titulo =
+        const tituloCliente =
             document.createElement("h3");
 
-        titulo.textContent =
+        tituloCliente.textContent =
             cliente;
 
-        titulo.style.margin =
-            "0 0 10px 0";
+        tituloCliente.style.margin =
+            "0 0 12px 0";
 
+        tituloCliente.style.padding =
+            "8px 10px";
 
-        tarjeta.appendChild(titulo);
+        tituloCliente.style.borderRadius =
+            "8px";
 
+        tituloCliente.style.background =
+            "#e8f1f8";
 
-        // ==================================================
-        // ORDENAR PRODUCTOS POR FECHA
-        // MÁS RECIENTE PRIMERO
-        // ==================================================
+        tituloCliente.style.color =
+            "#2c3e50";
 
-        clientes[cliente].sort((a, b) => {
-
-            const fechaA =
-                a.data.fecha || "";
-
-            const fechaB =
-                b.data.fecha || "";
-
-            return fechaB.localeCompare(fechaA);
-
-        });
+        tarjetaCliente.appendChild(
+            tituloCliente
+        );
 
 
         // ==================================================
-        // CREAR CADA PRODUCTO
+        // AGRUPAR POR FECHA
         // ==================================================
+
+        const fechas = {};
 
         clientes[cliente].forEach(item => {
 
-            const id =
-                item.id;
-
-            const data =
-                item.data;
-
-            const estado =
-                item.estado;
-
-
-            // ==================================================
-            // DATOS
-            // ==================================================
-
-            const numero =
-                data.correlativo ||
-                data.numero ||
-                "";
-
-            const producto =
-                data.producto ||
-                data.descripcion ||
-                data.detalle ||
-                "";
-
             const fecha =
-                data.fecha ||
-                "";
+                item.data.fecha || "Sin fecha";
 
-            const fechaEnvio =
-                estado.fechaEnvio ||
-                "";
-
-            const checked =
-                estado.check === true;
-
-
-            // ==================================================
-            // LÍNEA DEL PRODUCTO
-            // ==================================================
-
-            const linea =
-                document.createElement("div");
-
-            linea.className =
-                "linea-envio";
-
-
-            // ==================================================
-            // NÚMERO + CHECK
-            // ==================================================
-
-            const numeroDiv =
-                document.createElement("div");
-
-            numeroDiv.className =
-                "numero";
-
-
-            const checkbox =
-                document.createElement("input");
-
-            checkbox.type =
-                "checkbox";
-
-            checkbox.checked =
-                checked;
-
-            checkbox.onchange = () => {
-
-                marcarCheck(
-                    id,
-                    checkbox.checked
-                );
-
-            };
-
-
-            numeroDiv.appendChild(
-                checkbox
-            );
-
-
-            const numeroTexto =
-                document.createTextNode(
-                    ` #${numero}`
-                );
-
-            numeroDiv.appendChild(
-                numeroTexto
-            );
-
-
-            // ==================================================
-            // PRODUCTO
-            // ==================================================
-
-            const productoDiv =
-                document.createElement("div");
-
-            productoDiv.className =
-                "producto";
-
-            productoDiv.textContent =
-                producto;
-
-
-            // ==================================================
-            // FECHA DE LA VENTA
-            // ==================================================
-
-            const fechaDiv =
-                document.createElement("div");
-
-            fechaDiv.style.fontSize =
-                "12px";
-
-            fechaDiv.style.color =
-                "#666";
-
-            fechaDiv.textContent =
-                fecha;
-
-
-            // ==================================================
-            // ACCIONES
-            // ==================================================
-
-            const acciones =
-                document.createElement("div");
-
-            acciones.className =
-                "acciones";
-
-
-            // --------------------------------------------------
-            // FECHA DE ENVÍO
-            // --------------------------------------------------
-
-            const inputFecha =
-                document.createElement("input");
-
-            inputFecha.type =
-                "date";
-
-            inputFecha.value =
-                fechaEnvio;
-
-            inputFecha.onchange = () => {
-
-                guardarFecha(
-                    id,
-                    inputFecha.value
-                );
-
-            };
-
-
-            // --------------------------------------------------
-            // BOTÓN ENVIAR
-            // --------------------------------------------------
-
-            const btnEnviar =
-                document.createElement("button");
-
-            btnEnviar.className =
-                "btn-enviar";
-
-            btnEnviar.textContent =
-                "Enviar";
-
-            btnEnviar.onclick = () => {
-
-                marcarEnviado(id);
-
-            };
-
-
-            // --------------------------------------------------
-            // BOTÓN OCULTAR
-            // --------------------------------------------------
-
-            const btnOcultar =
-                document.createElement("button");
-
-            btnOcultar.className =
-                "btn-ocultar";
-
-            btnOcultar.textContent =
-                "X";
-
-            btnOcultar.onclick = () => {
-
-                ocultarEnvio(id);
-
-            };
-
-
-            acciones.append(
-                inputFecha,
-                btnEnviar,
-                btnOcultar
-            );
-
-
-            // ==================================================
-            // AGREGAR A LA LÍNEA
-            // ==================================================
-
-            linea.append(
-                numeroDiv,
-                productoDiv,
-                fechaDiv,
-                acciones
-            );
-
-
-            tarjeta.appendChild(
-                linea
-            );
-
-
-            // ==================================================
-            // FECHA ENVIADO
-            // ==================================================
-
-            if (fechaEnvio) {
-
-                const fechaEnviado =
-                    document.createElement("div");
-
-                fechaEnviado.className =
-                    "fecha-enviado";
-
-                fechaEnviado.textContent =
-                    `Enviado el ${fechaEnvio}`;
-
-                tarjeta.appendChild(
-                    fechaEnviado
-                );
-
+            if (!fechas[fecha]) {
+                fechas[fecha] = [];
             }
+
+            fechas[fecha].push(item);
 
         });
 
 
         // ==================================================
-        // AGREGAR TARJETA AL CONTENEDOR
+        // ORDENAR FECHAS
+        // MÁS RECIENTE PRIMERO
+        // ==================================================
+
+        const fechasOrdenadas =
+            Object.keys(fechas).sort((a, b) =>
+                b.localeCompare(a)
+            );
+
+
+        // ==================================================
+        // CREAR TARJETA POR FECHA
+        // ==================================================
+
+        fechasOrdenadas.forEach(fecha => {
+
+            const tarjetaFecha =
+                document.createElement("div");
+
+            tarjetaFecha.style.background =
+                "#f8fafc";
+
+            tarjetaFecha.style.border =
+                "1px solid #dfe6ec";
+
+            tarjetaFecha.style.borderRadius =
+                "8px";
+
+            tarjetaFecha.style.padding =
+                "8px";
+
+            tarjetaFecha.style.marginBottom =
+                "10px";
+
+
+            // ==================================================
+            // ENCABEZADO FECHA
+            // ==================================================
+
+            const encabezadoFecha =
+                document.createElement("div");
+
+            encabezadoFecha.style.fontWeight =
+                "bold";
+
+            encabezadoFecha.style.marginBottom =
+                "7px";
+
+            encabezadoFecha.style.color =
+                "#34495e";
+
+            encabezadoFecha.textContent =
+                `📅 ${fecha}`;
+
+            tarjetaFecha.appendChild(
+                encabezadoFecha
+            );
+
+
+            // ==================================================
+            // ORDENAR PRODUCTOS
+            // ==================================================
+
+            fechas[fecha].sort((a, b) => {
+
+                const numeroA =
+                    Number(
+                        a.data.correlativo ||
+                        a.data.numero ||
+                        0
+                    );
+
+                const numeroB =
+                    Number(
+                        b.data.correlativo ||
+                        b.data.numero ||
+                        0
+                    );
+
+                return numeroA - numeroB;
+
+            });
+
+
+            // ==================================================
+            // PRODUCTOS DE LA FECHA
+            // ==================================================
+
+            fechas[fecha].forEach(item => {
+
+                const id =
+                    item.id;
+
+                const data =
+                    item.data;
+
+                const estado =
+                    item.estado;
+
+
+                // ==================================================
+                // LÍNEA
+                // ==================================================
+
+                const linea =
+                    document.createElement("div");
+
+                linea.className =
+                    "linea-envio";
+
+
+                // ==================================================
+                // COLOR SEGÚN CHECK
+                // ==================================================
+
+                if (estado.check === true) {
+    linea.classList.add("linea-marcada");
+}
+
+
+                linea.style.marginBottom =
+                    "6px";
+
+
+                // ==================================================
+                // CHECK
+                // ==================================================
+
+                const numeroDiv =
+                    document.createElement("div");
+
+                numeroDiv.className =
+                    "numero";
+
+
+                const checkbox =
+                    document.createElement("input");
+
+                checkbox.type =
+                    "checkbox";
+
+                checkbox.checked =
+                    estado.check === true;
+
+
+                checkbox.onchange = async () => {
+
+    const nuevoEstado =
+        checkbox.checked;
+
+    // Cambio visual inmediato
+    linea.classList.toggle(
+        "linea-marcada",
+        nuevoEstado
+    );
+
+    // Guardar Firebase
+    await marcarCheck(
+        id,
+        nuevoEstado
+    );
+
+};
+
+
+                numeroDiv.appendChild(
+                    checkbox
+                );
+
+
+                const numeroTexto =
+                    document.createTextNode(
+                        ` ${
+                            data.correlativo ||
+                            data.numero ||
+                            ""
+                        }`
+                    );
+
+                numeroDiv.appendChild(
+                    numeroTexto
+                );
+
+
+                // ==================================================
+                // PRODUCTO
+                // ==================================================
+
+                const productoDiv =
+                    document.createElement("div");
+
+                productoDiv.className =
+                    "producto";
+
+                productoDiv.textContent =
+                    data.producto ||
+                    data.descripcion ||
+                    data.detalle ||
+                    "";
+
+
+                // ==================================================
+                // ACCIONES
+                // ==================================================
+
+                const acciones =
+                    document.createElement("div");
+
+                acciones.className =
+                    "acciones";
+
+
+                // ==================================================
+                // FECHA ENVÍO
+                // ==================================================
+
+                const inputFecha =
+                    document.createElement("input");
+
+                inputFecha.type =
+                    "date";
+
+                inputFecha.value =
+                    estado.fechaEnvio || "";
+
+
+                inputFecha.onchange = () => {
+
+                    guardarFecha(
+                        id,
+                        inputFecha.value
+                    );
+
+                };
+
+
+                // ==================================================
+                // BOTÓN ENVIAR
+                // ==================================================
+
+                const btnEnviar =
+                    document.createElement("button");
+
+                btnEnviar.className =
+                    "btn-enviar";
+
+                btnEnviar.textContent =
+                    "Enviar";
+
+                btnEnviar.onclick = () => {
+
+                    marcarEnviado(id);
+
+                };
+
+
+                // ==================================================
+                // BOTÓN OCULTAR
+                // ==================================================
+
+                const btnOcultar =
+                    document.createElement("button");
+
+                btnOcultar.className =
+                    "btn-ocultar";
+
+                btnOcultar.textContent =
+                    "X";
+
+                btnOcultar.onclick = () => {
+
+                    ocultarEnvio(id);
+
+                };
+
+
+                acciones.append(
+                    inputFecha,
+                    btnEnviar,
+                    btnOcultar
+                );
+
+
+                // ==================================================
+                // ARMAR LÍNEA
+                // ==================================================
+
+                linea.append(
+                    numeroDiv,
+                    productoDiv,
+                    acciones
+                );
+
+
+                tarjetaFecha.appendChild(
+                    linea
+                );
+
+
+                // ==================================================
+                // FECHA ENVIADO
+                // ==================================================
+
+                if (estado.fechaEnvio) {
+
+                    const fechaEnviado =
+                        document.createElement("div");
+
+                    fechaEnviado.className =
+                        "fecha-enviado";
+
+                    fechaEnviado.textContent =
+                        `Enviado el ${estado.fechaEnvio}`;
+
+                    tarjetaFecha.appendChild(
+                        fechaEnviado
+                    );
+
+                }
+
+            });
+
+
+            tarjetaCliente.appendChild(
+                tarjetaFecha
+            );
+
+        });
+
+
+        // ==================================================
+        // AGREGAR CLIENTE
         // ==================================================
 
         contenedor.appendChild(
-            tarjeta
+            tarjetaCliente
         );
 
     });
 
 }
 
-
 // ======================================================
 // MARCAR CHECK
 // ======================================================
 
-function marcarCheck(id, estado) {
+async function marcarCheck(id, estado) {
 
-    refEnvios
-        .child(id)
-        .update({
-            check: estado
-        });
+    try {
+
+        await refEnvios
+            .child(id)
+            .update({
+                check: estado
+            });
+
+        console.log(
+            "CHECK GUARDADO:",
+            id,
+            estado
+        );
+
+    } catch (error) {
+
+        console.error(
+            "ERROR GUARDANDO CHECK:",
+            error
+        );
+
+    }
 
 }
 
@@ -650,13 +1026,30 @@ function marcarCheck(id, estado) {
 // GUARDAR FECHA
 // ======================================================
 
-function guardarFecha(id, fecha) {
+async function guardarFecha(id, fecha) {
 
-    refEnvios
-        .child(id)
-        .update({
-            fechaEnvio: fecha
-        });
+    try {
+
+        await refEnvios
+            .child(id)
+            .update({
+                fechaEnvio: fecha
+            });
+
+        console.log(
+            "FECHA GUARDADA:",
+            id,
+            fecha
+        );
+
+    } catch (error) {
+
+        console.error(
+            "ERROR GUARDANDO FECHA:",
+            error
+        );
+
+    }
 
 }
 
@@ -665,21 +1058,35 @@ function guardarFecha(id, fecha) {
 // MARCAR COMO ENVIADO
 // ======================================================
 
-function marcarEnviado(id) {
+async function marcarEnviado(id) {
 
     const hoy =
         new Date()
             .toISOString()
             .split("T")[0];
 
+    try {
 
-    refEnvios
-        .child(id)
-        .update({
+        await refEnvios
+            .child(id)
+            .update({
+                fechaEnvio: hoy
+            });
 
-            fechaEnvio: hoy
+        console.log(
+            "ENVÍO GUARDADO:",
+            id,
+            hoy
+        );
 
-        });
+    } catch (error) {
+
+        console.error(
+            "ERROR GUARDANDO ENVÍO:",
+            error
+        );
+
+    }
 
 }
 
@@ -688,15 +1095,29 @@ function marcarEnviado(id) {
 // OCULTAR ENVÍO
 // ======================================================
 
-function ocultarEnvio(id) {
+async function ocultarEnvio(id) {
 
-    refEnvios
-        .child(id)
-        .update({
+    try {
 
-            oculto: true
+        await refEnvios
+            .child(id)
+            .update({
+                oculto: true
+            });
 
-        });
+        console.log(
+            "ENVÍO OCULTADO:",
+            id
+        );
+
+    } catch (error) {
+
+        console.error(
+            "ERROR OCULTANDO ENVÍO:",
+            error
+        );
+
+    }
 
 }
 
